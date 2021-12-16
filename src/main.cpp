@@ -1,3 +1,5 @@
+//firmware for SHK-02 board
+
 #include <Arduino.h>
 
 //for display
@@ -366,10 +368,16 @@ volatile int positionValueAvgDisp = 0;
 
 volatile int resultButtonA = STATE_NORMAL; // global value set by checkButton()
 volatile int resultButtonB = STATE_NORMAL; // global value set by checkButton()
+volatile int resultButtonC = STATE_NORMAL; // global value set by checkButton()
+volatile int resultButtonD = STATE_NORMAL; // global value set by checkButton()
 volatile int BtnPressedATimeout = 0;
 volatile int BtnPressedBTimeout = 0;
+volatile int BtnPressedCTimeout = 0;
+volatile int BtnPressedDTimeout = 0;
 volatile boolean BtnReleasedA = true;
 volatile boolean BtnReleasedB = true;
+volatile boolean BtnReleasedC = true;
+volatile boolean BtnReleasedD = true;
 
 //menu login
 int passwd = 0; // correct passwd is 1122
@@ -440,6 +448,8 @@ void updateSPI(int valueAN1, int valueAN2);
 //*****************************************************************
 void checkButtonA();
 void checkButtonB();
+void checkButtonC();
+void checkButtonD();
 
 // Timer interrupts
 void timer500us_isr(void);
@@ -481,9 +491,13 @@ void setup()
 
   pinMode(PIN_BTN_A, INPUT_PULLUP);
   pinMode(PIN_BTN_B, INPUT_PULLUP);
+  pinMode(PIN_BTN_C, INPUT_PULLUP);
+  pinMode(PIN_BTN_D, INPUT_PULLUP);
 
   attachInterrupt(digitalPinToInterrupt(PIN_BTN_A), checkButtonA, CHANGE);
   attachInterrupt(digitalPinToInterrupt(PIN_BTN_B), checkButtonB, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(PIN_BTN_C), checkButtonC, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(PIN_BTN_D), checkButtonD, CHANGE);
 
   pinMode(TEST_IN, INPUT_PULLUP);
   pinMode(SET_IN, INPUT_PULLUP);
@@ -2726,6 +2740,36 @@ void checkButtonB()
 }
 
 //*****************************************************************
+void checkButtonC()
+{
+  if (digitalReadFast(PIN_BTN_C))
+  {
+    if (BtnPressedCTimeout || resultButtonC == STATE_LONG)
+      BtnReleasedC = true;
+  }
+  else
+  {
+    BtnReleasedC = false;
+    BtnPressedCTimeout = BTN_HOLD_TIME;
+  }
+}
+
+//*****************************************************************
+void checkButtonD()
+{
+  if (digitalReadFast(PIN_BTN_D))
+  {
+    if (BtnPressedDTimeout || resultButtonD == STATE_LONG)
+      BtnReleasedD = true;
+  }
+  else
+  {
+    BtnReleasedD = false;
+    BtnPressedDTimeout = BTN_HOLD_TIME;
+  }
+}
+
+//*****************************************************************
 // Timer interrupts
 void timer500us_isr(void)
 { //every 500us
@@ -2797,6 +2841,36 @@ void timer500us_isr(void)
     {
       resultButtonB = STATE_SHORT;
       BtnPressedBTimeout = 0;
+    }
+  }
+
+  if (BtnPressedCTimeout)
+  {
+    BtnPressedCTimeout--;
+    if (!BtnReleasedC && (BtnPressedCTimeout < BTN_DEBOUNCE_TIME))
+    {
+      resultButtonC = STATE_LONG;
+      BtnPressedCTimeout = 0;
+    }
+    if (BtnReleasedC && (BtnPressedCTimeout < (BTN_HOLD_TIME - BTN_DEBOUNCE_TIME)))
+    {
+      resultButtonC = STATE_SHORT;
+      BtnPressedCTimeout = 0;
+    }
+  }
+
+  if (BtnPressedDTimeout)
+  {
+    BtnPressedDTimeout--;
+    if (!BtnReleasedD && (BtnPressedDTimeout < BTN_DEBOUNCE_TIME))
+    {
+      resultButtonD = STATE_LONG;
+      BtnPressedDTimeout = 0;
+    }
+    if (BtnReleasedD && (BtnPressedDTimeout < (BTN_HOLD_TIME - BTN_DEBOUNCE_TIME)))
+    {
+      resultButtonD = STATE_SHORT;
+      BtnPressedDTimeout = 0;
     }
   }
 
