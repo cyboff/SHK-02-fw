@@ -28,8 +28,8 @@
 
 //defaults EEPROM
 #define MODEL_TYPE 50
-#define MODEL_SERIAL_NUMBER 18001
-#define FW_VERSION 303
+#define MODEL_SERIAL_NUMBER 21001
+#define FW_VERSION 404
 
 #define DEFAULT_MODBUS_ID MODEL_SERIAL_NUMBER % 1000 % 247 // MODBUS ID slave (range 1..247)
 #define DEFAULT_MODBUS_SPEED 19200
@@ -124,23 +124,26 @@ int brightness = 5; // screen brightness
 
 // LEDs and I/O
 
-#define LED_POWER 16
-#define LED_SIGNAL 15
-#define LED_ALARM 14
+#define LED_POWER 19
+#define LED_SIGNAL 18 // now same as OUT_SIGNAL
+#define LED_ALARM 17
 
-#define PIN_BTN_A 17 //(digital pin)
-#define PIN_BTN_B 18 //(digital pin)
-#define TEST_IN 19
-#define SET_IN 20
+#define PIN_BTN_A 20 //(digital pin)
+#define PIN_BTN_B 21 //(digital pin)
+#define PIN_BTN_C 22 //(digital pin)
+#define PIN_BTN_D 23 //(digital pin)
 
-#define LASER 33
-#define IR_LED 32
-#define OUT_SIGNAL 8
+#define TEST_IN 28
+#define SET_IN 27
+
+#define LASER 26
+#define IR_LED 25
+#define OUT_SIGNAL_NEG 8
 #define OUT_ALARM_NEG 9 //negative output: 24V=>OK, 0V=>ALARM
 
-#define MOTOR_ALARM 21  //pulses from Hall probe
-#define MOTOR_ENABLE 22 //enable motor rotation
-#define MOTOR_CLK 23    //motor speed clock
+#define MOTOR_ALARM 14  //pulses from Hall probe
+#define MOTOR_ENABLE 15 //enable motor rotation
+#define MOTOR_CLK 16    //motor speed clock
 
 // Keycodes
 #define BTN_NONE 0 // No keys pressed
@@ -467,12 +470,12 @@ void setup()
   pinMode(LED_SIGNAL, OUTPUT);
   pinMode(LED_ALARM, OUTPUT);
 
-  pinMode(OUT_SIGNAL, OUTPUT);
+  pinMode(OUT_SIGNAL_NEG, OUTPUT);
   pinMode(OUT_ALARM_NEG, OUTPUT);
 
   digitalWrite(LED_POWER, HIGH);
-  digitalWrite(LED_SIGNAL, LOW);
-  digitalWrite(OUT_SIGNAL, LOW);
+  digitalWrite(LED_SIGNAL, LOW); // connected as OUT_SIGNAL
+  digitalWrite(OUT_SIGNAL_NEG, HIGH);
   digitalWrite(LED_ALARM, HIGH);
   digitalWrite(OUT_ALARM_NEG, LOW); // opposite to LED_ALARM
 
@@ -574,7 +577,7 @@ void setup()
   pinMode(MOTOR_CLK, OUTPUT);      //motor output pulses
 
   pinMode(MOTOR_ALARM, INPUT_PULLUP); //motor input pulses
-  NVIC_SET_PRIORITY(IRQ_PORTD, 16);   // pin 21 - PortD
+  NVIC_SET_PRIORITY(IRQ_PORTD, 16);   // pin 14 - PortD, see schematic of Teensy 3.2
   if (positionOffset < 1000)          //depends on motor HALL sensors & mirror position - choose the best to have no timing issues
     attachInterrupt(digitalPinToInterrupt(MOTOR_ALARM), motor_isr, FALLING);
   else
@@ -2986,14 +2989,14 @@ void updateResults()
   {
     filterOnOff.interval(filterOff); // update filter interval
     digitalWriteFast(LED_SIGNAL, HIGH);
-    digitalWriteFast(OUT_SIGNAL, HIGH);
+    digitalWriteFast(OUT_SIGNAL_NEG, LOW);
   }
 
   if (filterOnOff.fell())
   {
     filterOnOff.interval(filterOn); //update filter interval
     digitalWriteFast(LED_SIGNAL, LOW);
-    digitalWriteFast(OUT_SIGNAL, LOW);
+    digitalWriteFast(OUT_SIGNAL_NEG, HIGH);
   }
 
   if (digitalReadFast(LED_SIGNAL)) // update position only when SIGNAL PRESENT
@@ -3071,7 +3074,7 @@ long approxSimpleMovingAverage(int new_value, int period)
 
   if (filterPosition)
   {                                   // avoid div/0
-    if (!digitalReadFast(OUT_SIGNAL)) // clear values
+    if (!digitalReadFast(LED_SIGNAL)) // clear values
     {
       sma = 0;
     }
@@ -3094,7 +3097,7 @@ void checkSTATUS()
   bitWrite(io_state, IO_TEST_IN, !digitalRead(TEST_IN));
   bitWrite(io_state, IO_SET_IN, !digitalRead(SET_IN));
   bitWrite(io_state, IO_ALARM_OUT, !digitalRead(OUT_ALARM_NEG));
-  bitWrite(io_state, IO_SIGNAL_OUT, digitalRead(OUT_SIGNAL));
+  bitWrite(io_state, IO_SIGNAL_OUT, digitalRead(LED_SIGNAL));
   bitWrite(io_state, IO_BTN_A, !digitalRead(PIN_BTN_A));
   bitWrite(io_state, IO_BTN_B, !digitalRead(PIN_BTN_B));
   bitWrite(io_state, IO_LED_ALARM, digitalRead(LED_ALARM));
