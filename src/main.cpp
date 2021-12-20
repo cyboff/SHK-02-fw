@@ -151,9 +151,13 @@ int brightness = 5; // screen brightness
 #define BTN_NONE 0 // No keys pressed
 #define BTN_A 1    // Button A was pressed
 #define BTN_B 2    // Button B was pressed
-#define BTN_AH 3   // Button A was pressed and holded (BTN_HOLD_TIME) milisecons
-#define BTN_BH 4   // Button B was pressed and holded (BTN_HOLD_TIME) milisecons
-#define BTN_ABH 5  // Buttons A+B was pressed and holded (BTN_HOLD_TIME) milisecons
+#define BTN_C 3    // Button B was pressed
+#define BTN_D 4    // Button B was pressed
+#define BTN_AH 5   // Button A was pressed and holded (BTN_HOLD_TIME) milisecons
+#define BTN_BH 6   // Button A was pressed and holded (BTN_HOLD_TIME) milisecons
+#define BTN_CH 7   // Button A was pressed and holded (BTN_HOLD_TIME) milisecons
+#define BTN_DH 8   // Button A was pressed and holded (BTN_HOLD_TIME) milisecons
+#define BTN_ABH 9  // Buttons A+B was pressed and holded (BTN_HOLD_TIME) milisecons
 
 // Keyboard times
 #define BTN_DEBOUNCE_TIME 200  // debounce time (*500us) to prevent flickering when pressing or releasing the button
@@ -659,7 +663,7 @@ void displayMenu(void)
 
     // button interrupt check
 
-    switch (resultButtonA | resultButtonB)
+    switch (resultButtonA | resultButtonB | resultButtonC | resultButtonD)
     {
 
     case STATE_NORMAL:
@@ -670,16 +674,26 @@ void displayMenu(void)
 
     case STATE_SHORT:
     {
-      if (resultButtonB != STATE_SHORT)
+      if (resultButtonA == STATE_SHORT)
       {
         lastKey = BTN_A;
       }
-      else
+      else if (resultButtonB == STATE_SHORT)
       {
         lastKey = BTN_B;
       }
+      else if (resultButtonC == STATE_SHORT)
+      {
+        lastKey = BTN_C;
+      }
+      else
+      {
+        lastKey = BTN_D;
+      }
       resultButtonA = STATE_NORMAL;
       resultButtonB = STATE_NORMAL;
+      resultButtonC = STATE_NORMAL;
+      resultButtonD = STATE_NORMAL;
       break;
     }
 
@@ -692,7 +706,7 @@ void displayMenu(void)
         resultButtonA = STATE_NORMAL;
         resultButtonB = STATE_NORMAL;
       }
-      else if (resultButtonB != STATE_LONG)
+      else if (resultButtonA == STATE_LONG)
       {
         lastKey = BTN_AH;
         btnHoldCounter++;
@@ -702,13 +716,33 @@ void displayMenu(void)
           btnHoldCounter = 0;
         }
       }
-      else
+      else if (resultButtonB == STATE_LONG)
       {
         lastKey = BTN_BH;
         btnHoldCounter++;
         if (BtnReleasedB || ((currentMenu != MENU_MODBUS_ID) && (currentMenu != MENU_POSITION_OFFSET) && (currentMenu != MENU_FILTER_POSITION) && (currentMenu != MENU_FILTER_ON) && (currentMenu != MENU_FILTER_OFF))) // to increment ID while button is hold
         {
           resultButtonB = STATE_NORMAL;
+          btnHoldCounter = 0;
+        }
+      }
+      else if (resultButtonC == STATE_LONG)
+      {
+        lastKey = BTN_CH;
+        btnHoldCounter++;
+        if (BtnReleasedC || ((currentMenu != MENU_MODBUS_ID) && (currentMenu != MENU_POSITION_OFFSET) && (currentMenu != MENU_FILTER_POSITION) && (currentMenu != MENU_FILTER_ON) && (currentMenu != MENU_FILTER_OFF))) // to increment ID while button is hold
+        {
+          resultButtonC = STATE_NORMAL;
+          btnHoldCounter = 0;
+        }
+      }
+      else
+      {
+        lastKey = BTN_DH;
+        btnHoldCounter++;
+        if (BtnReleasedD || ((currentMenu != MENU_MODBUS_ID) && (currentMenu != MENU_POSITION_OFFSET) && (currentMenu != MENU_FILTER_POSITION) && (currentMenu != MENU_FILTER_ON) && (currentMenu != MENU_FILTER_OFF))) // to increment ID while button is hold
+        {
+          resultButtonD = STATE_NORMAL;
           btnHoldCounter = 0;
         }
       }
