@@ -445,7 +445,6 @@ void checkALARM();
 // SPI send 2 x 16 bit value
 void updateSPI(int valueAN1, int valueAN2);
 
-
 // INTERRUPT ROUTINES
 
 // button interrupts
@@ -470,10 +469,6 @@ long approxSimpleMovingAverage(int new_value, int period);
 
 void checkSTATUS();
 void checkModbus();
-
-
-
-
 
 void setup()
 {
@@ -710,7 +705,7 @@ void displayMenu(void)
       {
         lastKey = BTN_AH;
         btnHoldCounter++;
-        if (BtnReleasedA || ((currentMenu != MENU_MODBUS_ID) && (currentMenu != MENU_POSITION_OFFSET) && (currentMenu != MENU_FILTER_POSITION) && (currentMenu != MENU_FILTER_ON) && (currentMenu != MENU_FILTER_OFF))) // to increment ID while button is hold
+        if (BtnReleasedA)
         {
           resultButtonA = STATE_NORMAL;
           btnHoldCounter = 0;
@@ -740,7 +735,7 @@ void displayMenu(void)
       {
         lastKey = BTN_DH;
         btnHoldCounter++;
-        if (BtnReleasedD || ((currentMenu != MENU_MODBUS_ID) && (currentMenu != MENU_POSITION_OFFSET) && (currentMenu != MENU_FILTER_POSITION) && (currentMenu != MENU_FILTER_ON) && (currentMenu != MENU_FILTER_OFF))) // to increment ID while button is hold
+        if (BtnReleasedD)
         {
           resultButtonD = STATE_NORMAL;
           btnHoldCounter = 0;
@@ -875,7 +870,7 @@ void showAlarm(void)
       displayPrint("INT_TEST");
   }
 
-  if (lastKey == BTN_A || lastKey == BTN_B)
+  if (lastKey == BTN_D)
   {
     currentMenu = MENU_MAIN;
     currentMenuOption = 0;
@@ -915,7 +910,7 @@ void showMainMenu(void)
     }
   }
 
-  if (lastKey == BTN_A)
+  if (lastKey == BTN_B)
   {
     if (currentMenuOption < 4)
       currentMenuOption++;
@@ -923,7 +918,7 @@ void showMainMenu(void)
       currentMenuOption = 0;
   }
 
-  if (lastKey == BTN_B)
+  if (lastKey == BTN_C)
   {
     if (currentMenuOption > 0)
       currentMenuOption--;
@@ -931,18 +926,14 @@ void showMainMenu(void)
       currentMenuOption = 4;
   }
 
-  if (lastKey == BTN_BH)
+  if (lastKey == BTN_D)
   {
     if (currentMenuOption == 4)
     {
       laserTimeout = TIMEOUT_LASER;
       digitalWrite(LASER, !digitalRead(LASER));
     }
-  }
-
-  if (lastKey == BTN_ABH)
-  {
-    if (loggedIn)
+    else if (loggedIn)
     {
       currentMenu = MENU_SETUP;
       currentMenuOption = 0;
@@ -960,7 +951,7 @@ void showLoginMenu(void)
   if (!menuTimeout)
     menuTimeout = TIMEOUT_MENU;
 
-  if (lastKey == BTN_A || lastKey == BTN_B)
+  if (lastKey == BTN_A || lastKey == BTN_B || lastKey == BTN_C || lastKey == BTN_D)
     nextBtn++;
 
   switch (nextBtn)
@@ -970,25 +961,21 @@ void showLoginMenu(void)
     break;
   case 1:
     displayPrint("PIN:*   ");
-    if (lastKey == BTN_B)
-      passwd = passwd + 1000;
+    passwd = passwd + 1000 * lastKey;
     break;
   case 2:
     displayPrint("PIN:**  ");
-    if (lastKey == BTN_B)
-      passwd = passwd + 100;
+    passwd = passwd + 100 * lastKey;
     break;
   case 3:
     displayPrint("PIN:*** ");
-    if (lastKey == BTN_A)
-      passwd = passwd + 20;
+    passwd = passwd + 10 * lastKey;
     break;
   case 4:
     displayPrint("PIN:****");
-    if (lastKey == BTN_A)
-      passwd = passwd + 2;
+    passwd = passwd + lastKey;
     delay(500);
-    if (passwd == 1122)
+    if (passwd == 2314)
     {
       currentMenu = MENU_SETUP;
       currentMenuOption = 0;
@@ -1044,10 +1031,8 @@ void showSetupMenu(void)
 
   if (lastKey == BTN_A)
   {
-    if (currentMenuOption < 5)
-      currentMenuOption++;
-    else
-      currentMenuOption = 0;
+    currentMenu = MENU_MAIN;
+    currentMenuOption = 0;
   }
 
   if (lastKey == BTN_B)
@@ -1058,12 +1043,15 @@ void showSetupMenu(void)
       currentMenuOption = 5;
   }
 
-  if (lastKey == BTN_AH)
+  if (lastKey == BTN_C)
   {
-    currentMenu = MENU_MAIN;
-    currentMenuOption = 0;
+    if (currentMenuOption < 5)
+      currentMenuOption++;
+    else
+      currentMenuOption = 0;
   }
-  if (lastKey == BTN_BH)
+
+  if (lastKey == BTN_D)
   {
     if (currentMenuOption == 0)
     {
@@ -1098,7 +1086,8 @@ void showSetupMenu(void)
       //currentMenuOption = 3;
     }
   }
-  if (lastKey == BTN_ABH)
+
+  if (lastKey == BTN_AH)
   {
     displayPrint("Logout !");
     passwd = 0;
@@ -1127,11 +1116,9 @@ void showSensorMenu(void)
     displayPrint("Set %s", menu_setDisp[setDispIndex]);
 
   if (lastKey == BTN_A)
-  {
-    if (currentMenuOption < 4)
-      currentMenuOption++;
-    else
-      currentMenuOption = 0;
+  { // ESC
+    currentMenu = MENU_SETUP;
+    currentMenuOption = 0;
   }
 
   if (lastKey == BTN_B)
@@ -1142,12 +1129,15 @@ void showSensorMenu(void)
       currentMenuOption = 4;
   }
 
-  if (lastKey == BTN_AH)
+  if (lastKey == BTN_C)
   {
-    currentMenu = MENU_SETUP;
-    currentMenuOption = 0;
+    if (currentMenuOption < 4)
+      currentMenuOption++;
+    else
+      currentMenuOption = 0;
   }
-  if (lastKey == BTN_BH)
+
+  if (lastKey == BTN_D)
   {
     if (currentMenuOption == 0)
     {
@@ -1192,14 +1182,15 @@ void setGain1Menu(void)
   else
     displayPrint("      %2d", menu_pga);
 
-  if (lastKey == BTN_A)
+  if (lastKey == BTN_B)
   {
     if (menu_pga > 1)
       menu_pga = menu_pga / 2;
     else
       menu_pga = 64;
   }
-  if (lastKey == BTN_B)
+
+  if (lastKey == BTN_C)
   {
     if (menu_pga < 64)
       menu_pga = menu_pga * 2;
@@ -1208,7 +1199,7 @@ void setGain1Menu(void)
   }
 
   if (lastKey == BTN_NONE)
-  { // ESC
+  { // ESC timeout
     btnNoneCounter++;
     if (btnNoneCounter > BTN_NONE_COUNTER)
     {
@@ -1222,7 +1213,13 @@ void setGain1Menu(void)
     btnNoneCounter = 0;
   }
 
-  if (lastKey == BTN_ABH)
+  if (lastKey == BTN_A)
+  { //ESC
+    currentMenu = MENU_SENSOR;
+    currentMenuOption = 0;
+  }
+
+  if (lastKey == BTN_D)
   { //SAVE
     pga1 = menu_pga;
     eeprom_writeInt(EE_ADDR_gain_set1, pga1); //save to EEPROM
@@ -1243,14 +1240,14 @@ void setThre1Menu(void)
   else
     displayPrint("      %2d", menu_thre);
 
-  if (lastKey == BTN_A)
+  if (lastKey == BTN_B)
   {
     if (menu_thre > 20)
       menu_thre = menu_thre - 5;
     else
       menu_thre = 80;
   }
-  if (lastKey == BTN_B)
+  if (lastKey == BTN_C)
   {
     if (menu_thre < 80)
       menu_thre = menu_thre + 5;
@@ -1273,7 +1270,13 @@ void setThre1Menu(void)
     btnNoneCounter = 0;
   }
 
-  if (lastKey == BTN_ABH)
+  if (lastKey == BTN_A)
+  { //ESC
+    currentMenu = MENU_SENSOR;
+    currentMenuOption = 1;
+  }
+
+  if (lastKey == BTN_D)
   { // SAVE
     thre1 = menu_thre;
     eeprom_writeInt(EE_ADDR_threshold_set1, thre1); //save to EEPROM
@@ -1294,14 +1297,14 @@ void setGain2Menu(void)
   else
     displayPrint("      %2d", menu_pga);
 
-  if (lastKey == BTN_A)
+  if (lastKey == BTN_B)
   {
     if (menu_pga > 1)
       menu_pga = menu_pga / 2;
     else
       menu_pga = 64;
   }
-  if (lastKey == BTN_B)
+  if (lastKey == BTN_C)
   {
     if (menu_pga < 64)
       menu_pga = menu_pga * 2;
@@ -1324,7 +1327,13 @@ void setGain2Menu(void)
     btnNoneCounter = 0;
   }
 
-  if (lastKey == BTN_ABH)
+  if (lastKey == BTN_A)
+  { //ESC
+    currentMenu = MENU_SENSOR;
+    currentMenuOption = 2;
+  }
+
+  if (lastKey == BTN_D)
   { //SAVE
     pga2 = menu_pga;
     eeprom_writeInt(EE_ADDR_gain_set2, pga2); //save to EEPROM
@@ -1345,14 +1354,14 @@ void setThre2Menu(void)
   else
     displayPrint("      %2d", menu_thre);
 
-  if (lastKey == BTN_A)
+  if (lastKey == BTN_B)
   {
     if (menu_thre > 20)
       menu_thre = menu_thre - 5;
     else
       menu_thre = 80;
   }
-  if (lastKey == BTN_B)
+  if (lastKey == BTN_C)
   {
     if (menu_thre < 80)
       menu_thre = menu_thre + 5;
@@ -1375,7 +1384,13 @@ void setThre2Menu(void)
     btnNoneCounter = 0;
   }
 
-  if (lastKey == BTN_ABH)
+  if (lastKey == BTN_A)
+  { //ESC
+    currentMenu = MENU_SENSOR;
+    currentMenuOption = 3;
+  }
+
+  if (lastKey == BTN_D)
   { // SAVE
     thre2 = menu_thre;
     eeprom_writeInt(EE_ADDR_threshold_set2, thre2); //save to EEPROM
@@ -1411,14 +1426,14 @@ void setSetMenu(void)
   else
     displayPrint("    %s", menu_setDisp[setDispIndex]);
 
-  if (lastKey == BTN_A)
+  if (lastKey == BTN_B)
   {
     if (menu_set > 0)
       menu_set--;
     else
       menu_set = 2;
   }
-  if (lastKey == BTN_B)
+  if (lastKey == BTN_C)
   { // increment by 1
     if (menu_set < 2)
       menu_set++;
@@ -1441,7 +1456,13 @@ void setSetMenu(void)
     btnNoneCounter = 0;
   }
 
-  if (lastKey == BTN_ABH)
+  if (lastKey == BTN_A)
+  { //ESC
+    currentMenu = MENU_SENSOR;
+    currentMenuOption = 4;
+  }
+
+  if (lastKey == BTN_D)
   { // SAVE
     set = menu_set;
     eeprom_writeInt(EE_ADDR_set, set); //save to EEPROM
@@ -1471,14 +1492,6 @@ void showModbusMenu(void)
     displayPrint("Fmt  %s", menu_modbusFormatDisp[actualFormat]);
   }
 
-  if (lastKey == BTN_A)
-  {
-    if (currentMenuOption < 2)
-      currentMenuOption++;
-    else
-      currentMenuOption = 0;
-  }
-
   if (lastKey == BTN_B)
   {
     if (currentMenuOption > 0)
@@ -1487,12 +1500,20 @@ void showModbusMenu(void)
       currentMenuOption = 2;
   }
 
-  if (lastKey == BTN_AH)
+  if (lastKey == BTN_C)
+  {
+    if (currentMenuOption < 2)
+      currentMenuOption++;
+    else
+      currentMenuOption = 0;
+  }
+
+  if (lastKey == BTN_A)
   { // ESC
     currentMenu = MENU_SETUP;
     currentMenuOption = 1;
   }
-  if (lastKey == BTN_BH)
+  if (lastKey == BTN_D)
   { // ENTER
 
     if (currentMenuOption == 0)
@@ -1528,21 +1549,21 @@ void setModbusID(void)
   else
     displayPrint("     %3d", menu_modbusID);
 
-  if (lastKey == BTN_AH)
+  if (lastKey == BTN_BH)
   { // hold to increment by 10
     menu_modbusID = menu_modbusID - 10;
   }
 
-  if (lastKey == BTN_BH)
+  if (lastKey == BTN_CH)
   { // hold to increment by 10
     menu_modbusID = menu_modbusID + 10;
   }
 
-  if (lastKey == BTN_A)
+  if (lastKey == BTN_B)
   { // decrement
     menu_modbusID--;
   }
-  if (lastKey == BTN_B)
+  if (lastKey == BTN_C)
   { // increment
     menu_modbusID++;
   }
@@ -1568,7 +1589,13 @@ void setModbusID(void)
     btnNoneCounter = 0;
   }
 
-  if (lastKey == BTN_ABH)
+  if (lastKey == BTN_A)
+  {
+    currentMenu = MENU_MODBUS;
+    currentMenuOption = 0;
+  }
+
+  if (lastKey == BTN_D)
   { // SAVE
     modbusID = menu_modbusID;
     eeprom_writeInt(EE_ADDR_modbus_ID, modbusID); //save to EEPROM
@@ -1595,7 +1622,7 @@ void setModbusSpeed(void)
   else
     displayPrint("  %6d", menu_modbusSpeed);
 
-  if (lastKey == BTN_A)
+  if (lastKey == BTN_B)
   {
     if (actualSpeed > 0)
       actualSpeed--;
@@ -1603,7 +1630,7 @@ void setModbusSpeed(void)
       actualSpeed = 6;
     menu_modbusSpeed = modbusSpeedArray[actualSpeed] * 100;
   }
-  if (lastKey == BTN_B)
+  if (lastKey == BTN_C)
   { // increment by 1
     if (actualSpeed < 6)
       actualSpeed++;
@@ -1627,7 +1654,13 @@ void setModbusSpeed(void)
     btnNoneCounter = 0;
   }
 
-  if (lastKey == BTN_ABH)
+  if (lastKey == BTN_A)
+  {
+    currentMenu = MENU_MODBUS;
+    currentMenuOption = 1;
+  }
+
+  if (lastKey == BTN_D)
   { // SAVE
     modbusSpeed = menu_modbusSpeed;
     eeprom_writeInt(EE_ADDR_modbus_Speed, modbusSpeed / 100); //save to EEPROM
@@ -1654,7 +1687,7 @@ void setModbusFormat(void)
   else
     displayPrint("     %s", menu_modbusFormatDisp[actualFormat]);
 
-  if (lastKey == BTN_A)
+  if (lastKey == BTN_B)
   { // decrement by 1
     if (actualFormat > 0)
       actualFormat--;
@@ -1662,7 +1695,7 @@ void setModbusFormat(void)
       actualFormat = 3;
     menu_modbusFormat = modbusFormatArray[actualFormat];
   }
-  if (lastKey == BTN_B)
+  if (lastKey == BTN_C)
   { // increment by 1
     if (actualFormat < 3)
       actualFormat++;
@@ -1686,7 +1719,13 @@ void setModbusFormat(void)
     btnNoneCounter = 0;
   }
 
-  if (lastKey == BTN_ABH)
+  if (lastKey == BTN_A)
+  {
+    currentMenu = MENU_MODBUS;
+    currentMenuOption = 0;
+  }
+
+  if (lastKey == BTN_D)
   { // SAVE
     modbusFormat = menu_modbusFormat;
     eeprom_writeInt(EE_ADDR_modbus_Format, modbusFormat); //save to EEPROM
@@ -1716,11 +1755,9 @@ void showFiltersMenu(void)
     displayPrint("fOff%4d", filterOff);
 
   if (lastKey == BTN_A)
-  {
-    if (currentMenuOption < 2)
-      currentMenuOption++;
-    else
-      currentMenuOption = 0;
+  { //ESC
+    currentMenu = MENU_SETUP;
+    currentMenuOption = 2;
   }
 
   if (lastKey == BTN_B)
@@ -1731,12 +1768,15 @@ void showFiltersMenu(void)
       currentMenuOption = 2;
   }
 
-  if (lastKey == BTN_AH)
-  { //ESC
-    currentMenu = MENU_SETUP;
-    currentMenuOption = 2;
+  if (lastKey == BTN_C)
+  {
+    if (currentMenuOption < 2)
+      currentMenuOption++;
+    else
+      currentMenuOption = 0;
   }
-  if (lastKey == BTN_BH)
+
+  if (lastKey == BTN_D)
   {
     if (currentMenuOption == 0)
     {
@@ -1769,7 +1809,7 @@ void setFilterPosition(void)
   else
     displayPrint("    %4d", menu_filterPosition);
 
-  if (lastKey == BTN_AH)
+  if (lastKey == BTN_BH)
   { // decrement by 1,10,100
     if (btnHoldCounter < 20)
     {
@@ -1781,7 +1821,7 @@ void setFilterPosition(void)
     }
   }
 
-  if (lastKey == BTN_BH)
+  if (lastKey == BTN_CH)
   { // increment by 1,10,100
     if (btnHoldCounter < 20)
     {
@@ -1793,11 +1833,11 @@ void setFilterPosition(void)
     }
   }
 
-  if (lastKey == BTN_A)
+  if (lastKey == BTN_B)
   { // decrement
     menu_filterPosition--;
   }
-  if (lastKey == BTN_B)
+  if (lastKey == BTN_C)
   { // increment
     menu_filterPosition++;
   }
@@ -1823,7 +1863,13 @@ void setFilterPosition(void)
     btnNoneCounter = 0;
   }
 
-  if (lastKey == BTN_ABH)
+  if (lastKey == BTN_A)
+  {
+    currentMenu = MENU_FILTERS;
+    currentMenuOption = 0;
+  }
+
+  if (lastKey == BTN_D)
   { // SAVE
     filterPosition = menu_filterPosition;
     eeprom_writeInt(EE_ADDR_filter_position, filterPosition); //save to EEPROM
@@ -1844,7 +1890,7 @@ void setFilterOn(void)
   else
     displayPrint("    %4d", menu_filterOn);
 
-  if (lastKey == BTN_AH)
+  if (lastKey == BTN_BH)
   { // decrement by 1,10,100
     if (btnHoldCounter < 20)
     {
@@ -1856,7 +1902,7 @@ void setFilterOn(void)
     }
   }
 
-  if (lastKey == BTN_BH)
+  if (lastKey == BTN_CH)
   { // increment by 1,10,100
     if (btnHoldCounter < 20)
     {
@@ -1868,11 +1914,11 @@ void setFilterOn(void)
     }
   }
 
-  if (lastKey == BTN_A)
+  if (lastKey == BTN_B)
   { // decrement
     menu_filterOn--;
   }
-  if (lastKey == BTN_B)
+  if (lastKey == BTN_C)
   { // increment
     menu_filterOn++;
   }
@@ -1898,7 +1944,13 @@ void setFilterOn(void)
     btnNoneCounter = 0;
   }
 
-  if (lastKey == BTN_ABH)
+  if (lastKey == BTN_A)
+  {
+    currentMenu = MENU_FILTERS;
+    currentMenuOption = 1;
+  }
+
+  if (lastKey == BTN_D)
   { // SAVE
     filterOn = menu_filterOn;
     eeprom_writeInt(EE_ADDR_filter_on, filterOn); //save to EEPROM
@@ -1919,7 +1971,7 @@ void setFilterOff(void)
   else
     displayPrint("    %4d", menu_filterOff);
 
-  if (lastKey == BTN_AH)
+  if (lastKey == BTN_BH)
   { // decrement by 1,10,100
     if (btnHoldCounter < 20)
     {
@@ -1931,7 +1983,7 @@ void setFilterOff(void)
     }
   }
 
-  if (lastKey == BTN_BH)
+  if (lastKey == BTN_CH)
   { // increment by 1,10,100
     if (btnHoldCounter < 20)
     {
@@ -1943,11 +1995,12 @@ void setFilterOff(void)
     }
   }
 
-  if (lastKey == BTN_A)
+  if (lastKey == BTN_B)
   { // decrement
     menu_filterOff--;
   }
-  if (lastKey == BTN_B)
+
+  if (lastKey == BTN_C)
   { // increment
     menu_filterOff++;
   }
@@ -1973,7 +2026,13 @@ void setFilterOff(void)
     btnNoneCounter = 0;
   }
 
-  if (lastKey == BTN_ABH)
+  if (lastKey == BTN_A)
+  {
+    currentMenu = MENU_FILTERS;
+    currentMenuOption = 2;
+  }
+
+  if (lastKey == BTN_D)
   { // SAVE
     filterOff = menu_filterOff;
     eeprom_writeInt(EE_ADDR_filter_off, filterOff); //save to EEPROM
@@ -2002,11 +2061,9 @@ void showAnalogMenu(void)
     displayPrint("Offs%4d", positionOffset);
 
   if (lastKey == BTN_A)
-  {
-    if (currentMenuOption < 4)
-      currentMenuOption++;
-    else
-      currentMenuOption = 0;
+  { // ESC
+    currentMenu = MENU_SETUP;
+    currentMenuOption = 3;
   }
 
   if (lastKey == BTN_B)
@@ -2017,12 +2074,15 @@ void showAnalogMenu(void)
       currentMenuOption = 4;
   }
 
-  if (lastKey == BTN_AH)
-  { // ESC
-    currentMenu = MENU_SETUP;
-    currentMenuOption = 3;
+  if (lastKey == BTN_C)
+  {
+    if (currentMenuOption < 4)
+      currentMenuOption++;
+    else
+      currentMenuOption = 0;
   }
-  if (lastKey == BTN_BH)
+
+  if (lastKey == BTN_D)
   {
     if (currentMenuOption == 0)
     {
@@ -2067,11 +2127,11 @@ void setWindowBegin(void)
   else
     displayPrint("    %3d%%", menu_windowBegin);
 
-  if (lastKey == BTN_A)
+  if (lastKey == BTN_B)
   { // decrement
     menu_windowBegin = menu_windowBegin - 5;
   }
-  if (lastKey == BTN_B)
+  if (lastKey == BTN_C)
   { // increment
     menu_windowBegin = menu_windowBegin + 5;
   }
@@ -2097,7 +2157,13 @@ void setWindowBegin(void)
     btnNoneCounter = 0;
   }
 
-  if (lastKey == BTN_ABH)
+  if (lastKey == BTN_A)
+  {
+    currentMenu = MENU_ANALOG;
+    currentMenuOption = 0;
+  }
+
+  if (lastKey == BTN_D)
   { // SAVE
     windowBegin = menu_windowBegin;
     eeprom_writeInt(EE_ADDR_window_begin, windowBegin); //save to EEPROM
@@ -2118,11 +2184,11 @@ void setWindowEnd(void)
   else
     displayPrint("    %3d%%", menu_windowEnd);
 
-  if (lastKey == BTN_A)
+  if (lastKey == BTN_B)
   { // decrement
     menu_windowEnd = menu_windowEnd - 5;
   }
-  if (lastKey == BTN_B)
+  if (lastKey == BTN_A)
   { // increment
     menu_windowEnd = menu_windowEnd + 5;
   }
@@ -2148,7 +2214,13 @@ void setWindowEnd(void)
     btnNoneCounter = 0;
   }
 
-  if (lastKey == BTN_ABH)
+  if (lastKey == BTN_A)
+  {
+    currentMenu = MENU_ANALOG;
+    currentMenuOption = 1;
+  }
+
+  if (lastKey == BTN_D)
   { // SAVE
     windowEnd = menu_windowEnd;
     eeprom_writeInt(EE_ADDR_window_end, windowEnd); //save to EEPROM
@@ -2170,19 +2242,20 @@ void setPositionMode(void)
   else
     displayPrint("    %s", menu_positionModeDisp[menu_positionMode]);
 
-  if (lastKey == BTN_A)
-  { // increment by 1
-    if (menu_positionMode < 3)
-      menu_positionMode++;
-    else
-      menu_positionMode = 0;
-  }
   if (lastKey == BTN_B)
   {
     if (menu_positionMode > 0)
       menu_positionMode--;
     else
       menu_positionMode = 3;
+  }
+
+  if (lastKey == BTN_C)
+  { // increment by 1
+    if (menu_positionMode < 3)
+      menu_positionMode++;
+    else
+      menu_positionMode = 0;
   }
 
   if (lastKey == BTN_NONE)
@@ -2200,7 +2273,13 @@ void setPositionMode(void)
     btnNoneCounter = 0;
   }
 
-  if (lastKey == BTN_ABH)
+  if (lastKey == BTN_A)
+  {
+    currentMenu = MENU_ANALOG;
+    currentMenuOption = 2;
+  }
+
+  if (lastKey == BTN_D)
   { // SAVE
     positionMode = menu_positionMode;
     eeprom_writeInt(EE_ADDR_position_mode, positionMode); //save to EEPROM
@@ -2222,19 +2301,20 @@ void setAnalogOutMode(void)
   else
     displayPrint("    %s", menu_analogOutModeDisp[menu_analogOutMode]);
 
-  if (lastKey == BTN_A)
-  { // increment by 1
-    if (menu_analogOutMode < 3)
-      menu_analogOutMode++;
-    else
-      menu_analogOutMode = 0;
-  }
   if (lastKey == BTN_B)
   {
     if (menu_analogOutMode > 0)
       menu_analogOutMode--;
     else
       menu_analogOutMode = 3;
+  }
+
+  if (lastKey == BTN_C)
+  { // increment by 1
+    if (menu_analogOutMode < 3)
+      menu_analogOutMode++;
+    else
+      menu_analogOutMode = 0;
   }
 
   if (lastKey == BTN_NONE)
@@ -2252,7 +2332,13 @@ void setAnalogOutMode(void)
     btnNoneCounter = 0;
   }
 
-  if (lastKey == BTN_ABH)
+  if (lastKey == BTN_A)
+  {
+    currentMenu = MENU_ANALOG;
+    currentMenuOption = 3;
+  }
+
+  if (lastKey == BTN_D)
   { // SAVE
     analogOutMode = menu_analogOutMode;
     eeprom_writeInt(EE_ADDR_analog_out_mode, analogOutMode); //save to EEPROM
@@ -2273,20 +2359,20 @@ void setPositionOffset(void)
   else
     displayPrint("    %4d", menu_positionOffset);
 
-  if (lastKey == BTN_AH)
+  if (lastKey == BTN_BH)
   { // decrement
     menu_positionOffset = menu_positionOffset - 10;
   }
-  if (lastKey == BTN_BH)
+  if (lastKey == BTN_CH)
   { // increment
     menu_positionOffset = menu_positionOffset + 10;
   }
 
-  if (lastKey == BTN_A)
+  if (lastKey == BTN_B)
   { // decrement
     menu_positionOffset--;
   }
-  if (lastKey == BTN_B)
+  if (lastKey == BTN_C)
   { // increment
     menu_positionOffset++;
   }
@@ -2312,7 +2398,13 @@ void setPositionOffset(void)
     btnNoneCounter = 0;
   }
 
-  if (lastKey == BTN_ABH)
+  if (lastKey == BTN_A)
+  {
+    currentMenu = MENU_ANALOG;
+    currentMenuOption = 4;
+  }
+
+  if (lastKey == BTN_D)
   { // SAVE
     positionOffset = menu_positionOffset;
     //adc0_busy = 0;
@@ -2345,11 +2437,9 @@ void showInfoMenu(void)
     displayPrint("FacReset");
 
   if (lastKey == BTN_A)
-  {
-    if (currentMenuOption < 6)
-      currentMenuOption++;
-    else
-      currentMenuOption = 0;
+  { //ESC
+    currentMenu = MENU_SETUP;
+    currentMenuOption = 4;
   }
 
   if (lastKey == BTN_B)
@@ -2360,12 +2450,15 @@ void showInfoMenu(void)
       currentMenuOption = 6;
   }
 
-  if (lastKey == BTN_AH)
+  if (lastKey == BTN_C)
   {
-    currentMenu = MENU_SETUP;
-    currentMenuOption = 4;
+    if (currentMenuOption < 6)
+      currentMenuOption++;
+    else
+      currentMenuOption = 0;
   }
-  if (lastKey == BTN_BH)
+
+  if (lastKey == BTN_D)
   {
     if (currentMenuOption == 6)
     {
@@ -2403,20 +2496,20 @@ void showResetMenu(void)
     }
   }
 
-  if (lastKey == BTN_A)
-  {
-    if (currentMenuOption < 1)
-      currentMenuOption++;
-    else
-      currentMenuOption = 0;
-  }
-
   if (lastKey == BTN_B)
   {
     if (currentMenuOption > 0)
       currentMenuOption--;
     else
       currentMenuOption = 1;
+  }
+
+  if (lastKey == BTN_C)
+  {
+    if (currentMenuOption < 1)
+      currentMenuOption++;
+    else
+      currentMenuOption = 0;
   }
 
   if (lastKey == BTN_NONE)
@@ -2434,7 +2527,13 @@ void showResetMenu(void)
     btnNoneCounter = 0;
   }
 
-  if (lastKey == BTN_ABH)
+  if (lastKey == BTN_A)
+  {
+    currentMenu = MENU_INFO;
+    currentMenuOption = 5;
+  }
+
+  if (lastKey == BTN_D)
   {
     if (currentMenuOption == 0)
     {
@@ -2744,7 +2843,7 @@ void updateSPI(int valueAN1, int valueAN2)
 
 // button interrupts
 //*****************************************************************
-void  checkButtonA()
+void checkButtonA()
 {
   if (digitalReadFast(PIN_BTN_A))
   {
@@ -3040,7 +3139,7 @@ void updateResults()
       if (peakValue > hmdThreshold) // check threshold crossing with hysteresis
       {
         // HMD mode
-        if ((positionMode == 0) && !peakValueTime) 
+        if ((positionMode == 0) && !peakValueTime)
         {
           peakValueTime = i * 5;
           digitalWriteFast(FILTER_PIN, HIGH); // update internal pin for bounce2 filter
@@ -3059,7 +3158,7 @@ void updateResults()
         // check for falling edge
         if (positionMode == 2) // only the first occurence
         {
-          if ((adc_data[i] < thre256 - hmdThresholdHyst) && (!fallingEdgeTime))// added additional hysteresis to avoid flickering
+          if ((adc_data[i] < thre256 - hmdThresholdHyst) && (!fallingEdgeTime)) // added additional hysteresis to avoid flickering
           {
             fallingEdgeTime = i * 5;
             digitalWriteFast(FILTER_PIN, HIGH); // update internal pin for bounce2 filter
