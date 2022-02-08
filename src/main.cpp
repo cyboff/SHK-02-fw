@@ -339,11 +339,13 @@ enum
   IO_SET_IN,
   IO_ALARM_OUT,
   IO_SIGNAL_OUT,
-  IO_BTN_A,
-  IO_BTN_B,
   IO_LED_ALARM,
   IO_LED_SIGNAL,
-  IO_LED_POWER
+  IO_LED_POWER,
+  IO_BTN_A,
+  IO_BTN_B,
+  IO_BTN_C,
+  IO_BTN_D
 };
 
 // Timers
@@ -3032,11 +3034,13 @@ void checkSTATUS()
   bitWrite(io_state, IO_SET_IN, !digitalRead(SET_IN));
   bitWrite(io_state, IO_ALARM_OUT, !digitalRead(OUT_ALARM_NEG));
   bitWrite(io_state, IO_SIGNAL_OUT, digitalRead(LED_SIGNAL));
-  bitWrite(io_state, IO_BTN_A, !digitalRead(PIN_BTN_A));
-  bitWrite(io_state, IO_BTN_B, !digitalRead(PIN_BTN_B));
   bitWrite(io_state, IO_LED_ALARM, digitalRead(LED_ALARM));
   bitWrite(io_state, IO_LED_SIGNAL, digitalRead(LED_SIGNAL));
   bitWrite(io_state, IO_LED_POWER, digitalRead(LED_POWER));
+  bitWrite(io_state, IO_BTN_A, !digitalRead(PIN_BTN_A));
+  bitWrite(io_state, IO_BTN_B, !digitalRead(PIN_BTN_B));
+  bitWrite(io_state, IO_BTN_C, !digitalRead(PIN_BTN_C));
+  bitWrite(io_state, IO_BTN_D, !digitalRead(PIN_BTN_D));
 }
 
 void checkModbus()
