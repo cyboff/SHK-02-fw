@@ -71,7 +71,7 @@ uint16_t modbus_update(uint16_t *holdingRegs)
         uint16_t crc16;
         
         // broadcasting is not supported for function 3 
-        if (!broadcastFlag && (function == 3))
+        if (!broadcastFlag && ((function == 3) || (function == 4)))
         {
           if (startingAddress < holdingRegsSize) // check exception 2 ILLEGAL DATA ADDRESS
           {
