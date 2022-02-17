@@ -122,7 +122,7 @@ float sma = 0;
 
 // create am instance of the LED display library:
 LedDisplay myDisplay = LedDisplay(dataPin, registerSelectPin, clockPin, enablePin, resetPin, displayLength);
-int brightness = 5; // screen brightness
+int brightness = 10; // screen brightness
 
 // LEDs and I/O
 

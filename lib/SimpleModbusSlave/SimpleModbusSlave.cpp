@@ -24,7 +24,7 @@ uint16_t modbus_update(uint16_t *holdingRegs)
   unsigned char buffer = 0;
   unsigned char overflow = 0;
   
-  while (Serial1.available())
+  while (Serial1.available())  // modified for using Serial1 on Teensy 3.2
   {
     // The maximum number of bytes is limited to the serial buffer size of 128 bytes
     // If more bytes is received than the BUFFER_SIZE the overflow flag will be set and the 
@@ -70,7 +70,7 @@ uint16_t modbus_update(uint16_t *holdingRegs)
         unsigned char address;
         uint16_t crc16;
         
-        // broadcasting is not supported for function 3 
+        // broadcasting is not supported for function 3 (added function 4 for compatibility with SDIS sensors)
         if (!broadcastFlag && ((function == 3) || (function == 4)))
         {
           if (startingAddress < holdingRegsSize) // check exception 2 ILLEGAL DATA ADDRESS
