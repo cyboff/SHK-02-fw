@@ -85,6 +85,74 @@
 // void modbus_configure(long baud, unsigned char _slaveID, unsigned char _TxEnablePin, uint16_t _holdingRegsSize, unsigned char _lowLatency)
 void modbus_configure(long baud, uint16_t format, byte _slaveID, byte _TxEnablePin, uint16_t _holdingRegsSize, unsigned char _lowLatency);
 uint16_t modbus_update(uint16_t *holdingRegs);
- 
+
+//////////////// registers of your slave ///////////////////
+enum
+{
+  // just add or remove registers and your good to go...
+  // The first register starts at address 0
+  ENUM_SIZE,
+  MB_MODEL_TYPE,
+  MB_MODEL_SERIAL_NUMBER,
+  MB_FW_VERSION,
+
+  MODBUS_ID,     // address 1..247
+  MODBUS_SPEED,  // baud rate/100 to fit into word
+  MODBUS_FORMAT, // SERIAL_8N1 = 0, SERIAL_8E1 = 6, SERIAL_8O1 = 7 , SERIAL_8N2 = 4
+
+  SET,            // RELAY = 0 (REL1 || REL2), MAN1 = 1, MAN2 = 2
+  GAIN_SET1,      // valid values 1,2,4,8,16,32,64
+  THRESHOLD_SET1, // min 20, max 80
+  GAIN_SET2,      // valid values 1,2,4,8,16,32,64
+  THRESHOLD_SET2, // min 20, max 80
+
+  WINDOW_BEGIN,    // min 5, max 50
+  WINDOW_END,      // min 50 max 95
+  POSITION_MODE,   // hmd = 0, rising = 1, falling = 2, peak = 3
+  ANALOG_OUT_MODE, // an1/an2: "1Int2Pos" = 0, "1Pos2Int" = 1, "1Int2Int" = 2, "1Pos2Pos" = 3
+  POSITION_OFFSET, // min 5, max 95 to avoid coincidence with pulse interrupts
+
+  FILTER_POSITION, // range 0 - 9999 ms (or nr of mirrors) for moving average
+  FILTER_ON,       // range 0 - 9999 ms
+  FILTER_OFF,      // range 0 - 9999 ms
+
+  ACT_TEMPERATURE,
+  MAX_TEMPERATURE,
+  TOTAL_RUNTIME,
+  IO_STATE,
+
+  PEAK_VALUE,
+  POSITION_VALUE,
+  POSITION_VALUE_AVG,
+
+  AN_VALUES, // 25 registers
+  MOTOR_TIME_DIFF = AN_VALUES + 25,
+  EXEC_TIME_ADC,     // exectime of adc conversions
+  EXEC_TIME,         // exectime of adc conversions + results calculation
+  EXEC_TIME_TRIGGER, // exectime of each triggering
+  OFFSET_DELAY,      // calculated trigger delay
+  TOTAL_ERRORS,
+  // leave this one
+  TOTAL_REGS_SIZE
+  // total number of registers for function 3 and 16 share the same register array
+};
+
+// I/O Status bits for Modbus
+enum
+{
+  IO_LASER,
+  IO_IR_LED,
+  IO_TEST_IN,
+  IO_SET_IN,
+  IO_ALARM_OUT,
+  IO_SIGNAL_OUT,
+  IO_LED_ALARM,
+  IO_LED_SIGNAL,
+  IO_LED_POWER,
+  IO_BTN_A,
+  IO_BTN_B,
+  IO_BTN_C,
+  IO_BTN_D
+}; 
 
 #endif
