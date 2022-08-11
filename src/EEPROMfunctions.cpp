@@ -17,8 +17,6 @@ uint16_t io_state;
 unsigned long exectime;
 unsigned long pulsetime;
 
-uint16_t holdingRegs[TOTAL_REGS_SIZE]; // function 3 and 16 register array
-
 int windowBegin, windowEnd, positionOffset, positionMode, analogOutMode;
 int filterPosition, filterOn, filterOff;
 

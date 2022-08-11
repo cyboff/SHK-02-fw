@@ -5,7 +5,7 @@
 //defaults EEPROM
 #define MODEL_TYPE 50
 #define MODEL_SERIAL_NUMBER 22001
-#define FW_VERSION 502
+#define FW_VERSION 503
 
 #define DEFAULT_MODBUS_ID MODEL_SERIAL_NUMBER % 1000 % 247 // MODBUS ID slave (range 1..247)
 #define DEFAULT_MODBUS_SPEED 19200
@@ -28,7 +28,7 @@
 #define DEFAULT_WINDOW_END 80   // min 55 max 95
 #endif
 
-#define DEFAULT_POSITION_MODE 1     // hmd = 0, rising = 1, falling = 2, peak = 3
+#define DEFAULT_POSITION_MODE 0     // hmd = 0, rising = 1, falling = 2, peak = 3
 #define DEFAULT_ANALOG_OUT_MODE 0   // an1/an2: "1Int2Pos" = 0, "1Pos2Int2" = 1, "1Int2Int" = 2, "1Pos2Pos" = 3
 #define DEFAULT_POSITION_OFFSET 250 // min 5, max 95 to avoid coincidence with pulse interrupts
 
