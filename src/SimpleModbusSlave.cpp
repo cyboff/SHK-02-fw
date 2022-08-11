@@ -1,6 +1,5 @@
 #include "SimpleModbusSlave.h"
-
-
+#include "Variables.h"
 
 #define BUFFER_SIZE 128
 
@@ -68,12 +67,13 @@ uint16_t modbus_update(uint16_t *holdingRegs)
         uint16_t startingAddress = ((frame[2] << 8) | frame[3]); // combine the starting address bytes
         uint16_t no_of_registers = ((frame[4] << 8) | frame[5]); // combine the number of register bytes  
         uint16_t maxData = startingAddress + no_of_registers;
-        unsigned char index;
+        //unsigned char index;
+        uint16_t index;
         unsigned char address;
         uint16_t crc16;
         
-        // broadcasting is not supported for function 3 (added function 4 for compatibility with SDIS sensors)
-        if (!broadcastFlag && ((function == 3) || (function == 4)))
+        // broadcasting is not supported for function 3
+        if (!broadcastFlag && (function == 3))
         {
           if (startingAddress < holdingRegsSize) // check exception 2 ILLEGAL DATA ADDRESS
           {
@@ -107,6 +107,168 @@ uint16_t modbus_update(uint16_t *holdingRegs)
           else
             exceptionResponse(2); // exception 2 ILLEGAL DATA ADDRESS
         }
+        else if (!broadcastFlag && (function == 4)) // added for compatibility with older SDIS sensors
+        {
+          if (startingAddress < holdingRegsSize) // check exception 2 ILLEGAL DATA ADDRESS
+          {
+            if (maxData <= holdingRegsSize) // check exception 3 ILLEGAL DATA VALUE
+            {
+              unsigned char noOfBytes = no_of_registers * 2;
+              unsigned char responseFrameSize = 5 + noOfBytes; // ID, function, noOfBytes, (dataLo + dataHi) * number of registers, crcLo, crcHi
+              frame[0] = slaveID;
+              frame[1] = function;
+              frame[2] = noOfBytes;
+              address = 3; // PDU starts at the 4th byte
+              uint16_t temp;
+              
+              for (index = startingAddress; index < maxData; index++)
+              {
+                //temp = holdingRegs[index];  // original
+                switch (index)
+                {
+                case 3:
+                  temp = peakValueDisp*100;
+                  break;
+                case 4:
+                  temp = positionValueAvgDisp*10;
+                  break;
+                case 9:
+                  temp = holdingRegs[ANALOG_OUT_MODE];
+                  break;
+                case 10:
+                case 100:
+                case 107:
+                  temp = set; // actual set
+                  break;
+                case 11:
+                  temp = pga*100; // actual gain
+                  break;
+                case 12:
+                  temp = (thre+5)*100; // actual threshold in old format
+                  break;
+                case 13:
+                case 105:
+                case 106:
+                  temp = 10*100; // threshold hysteresis is fixed 10%
+                  break;
+                case 101:
+                  temp = holdingRegs[GAIN_SET1]*100;
+                  break;
+                case 102:
+                  temp = holdingRegs[GAIN_SET2]*100;
+                  break;
+                case 103:
+                  temp = holdingRegs[THRESHOLD_SET1]*100;
+                  break;  
+                case 104:
+                  temp = holdingRegs[THRESHOLD_SET2]*100;
+                  break;
+                case 120:
+                  temp = holdingRegs[WINDOW_BEGIN]*100;
+                  break;
+                case 121:
+                  temp = holdingRegs[WINDOW_END]*100;
+                  break;
+                case 122:
+                case 123:
+                  temp = 5*100; // window hysteresis is fixed 5% 
+                  break;
+                case 130:
+                case 131:
+                  temp = holdingRegs[ANALOG_OUT_MODE];
+                  break;
+                case 132:
+                case 133:
+                  temp = 0; // analog out without material is always 0%
+                  break;
+                case 110:
+                  temp = holdingRegs[FILTER_ON];
+                  break;
+                case 111:
+                  temp = holdingRegs[FILTER_OFF];
+                  break;
+                case 112:
+                  temp = holdingRegs[FILTER_POSITION];
+                  break;
+                case 150:
+                case 190:
+                  temp = holdingRegs[POSITION_MODE];
+                  break;
+                case 162:
+                  temp = holdingRegs[POSITION_OFFSET];
+                  break;
+                case 210:
+                  temp = holdingRegs[MODBUS_ID];
+                  break;
+                case 211:
+                  temp = 2; // only RTU
+                case 212:
+                  temp = (holdingRegs[MODBUS_SPEED]*100) & 0xFFFF;
+                  break;
+                case 213:
+                case 214:
+                  temp = holdingRegs[MODBUS_FORMAT];
+                  break;
+                case 400:
+                case 420:
+                  temp = holdingRegs[IO_STATE];
+                  break;
+                case 440:
+                  temp = holdingRegs[ACT_TEMPERATURE];
+                  break;
+                case 441:
+                  temp = 60; // temperature alarm
+                  break;
+                case 442:
+                  temp = holdingRegs[MAX_TEMPERATURE];
+                  break;
+                case 443:
+                  temp = 5; // temperature alarm hysteresis
+                  break;
+                case 1066:
+                  temp = holdingRegs[EXEC_TIME_ADC];
+                  break;
+                case 1067:
+                  temp = holdingRegs[EXEC_TIME];
+                  break;
+                case 1068:
+                  temp = holdingRegs[EXEC_TIME_TRIGGER];
+                  break;
+                case 1069:
+                  temp = holdingRegs[TOTAL_RUNTIME];
+                  break;
+                case 1070:
+                  temp = holdingRegs[MB_MODEL_SERIAL_NUMBER];
+                  break;
+                case 1071:
+                  temp = holdingRegs[MB_MODEL_TYPE];
+                  break;
+                case 1072:
+                  temp = holdingRegs[MB_FW_VERSION];
+                  break;
+                default:
+                  temp = 0;
+                  break;
+                }
+
+
+                frame[address] = temp >> 8; // split the register into 2 bytes
+                address++;
+                frame[address] = temp & 0xFF;
+                address++;
+              } 
+              
+              crc16 = calculateCRC(responseFrameSize - 2);
+              frame[responseFrameSize - 2] = crc16 >> 8; // split crc into 2 bytes
+              frame[responseFrameSize - 1] = crc16 & 0xFF;
+              sendPacket(responseFrameSize);
+            }
+            else  
+              exceptionResponse(3); // exception 3 ILLEGAL DATA VALUE
+          }
+          else
+            exceptionResponse(2); // exception 2 ILLEGAL DATA ADDRESS
+        }
         else if (function == 6)
         {
           if (startingAddress < holdingRegsSize) // check exception 2 ILLEGAL DATA ADDRESS
@@ -115,7 +277,16 @@ uint16_t modbus_update(uint16_t *holdingRegs)
               uint16_t regStatus = ((frame[4] << 8) | frame[5]);
               unsigned char responseFrameSize = 8;
               
-              holdingRegs[startingAddress] = regStatus;
+              //holdingRegs[startingAddress] = regStatus;   // original
+              switch (startingAddress)
+              {
+              case 1:
+                holdingRegs[startingAddress] = regStatus;
+                break;
+              
+              default:
+                break;
+              }
               
               crc16 = calculateCRC(responseFrameSize - 2);
               frame[responseFrameSize - 2] = crc16 >> 8; // split crc into 2 bytes

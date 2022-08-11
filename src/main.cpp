@@ -1,4 +1,4 @@
-//firmware for SHK-02 board
+// firmware for SHK-02 board
 
 #include <Arduino.h>
 #include <stdio.h>
@@ -16,20 +16,21 @@
 // for filters
 #include <Bounce2.h>
 
-//for offset delay
+// for offset delay
 #include <TeensyDelay.h>
 
-//for ModBus
+// for ModBus
 #include "SimpleModbusSlave.h"
 
 #include "Variables.h"
 #include "EEPROMfunctions.h"
 #include "DisplayMenus.h"
 
+uint16_t holdingRegs[TOTAL_REGS_SIZE]; // function 3 and 16 register array
+
 // Keyboard times
 #define BTN_DEBOUNCE_TIME 200 // debounce time (*500us) to prevent flickering when pressing or releasing the button
 #define BTN_HOLD_TIME 3000    // holding period (*500us) how long to wait for press+hold event
-
 
 // create am instance of the LED display library:
 LedDisplay myDisplay = LedDisplay(LED_DATA_PIN, LED_RS_PIN, LED_CLK_PIN, LED_EN_PIN, LED_RST_PIN, DISPLAY_LENGHT);
@@ -42,26 +43,25 @@ float sma = 0;
 // configure ADC
 #define ADC0_AVERAGING 1
 #define ANALOG_BUFFER_SIZE 200
-                                 
-volatile DMAMEM int16_t adc0_buf[ANALOG_BUFFER_SIZE]; // buffer 1...
+
+volatile DMAMEM int16_t adc0_buf[ANALOG_BUFFER_SIZE] = {}; // buffer 1...
 
 ADC *adc = new ADC(); // adc object
 DMAChannel adc0_dma;
 // References for ISRs...
-//extern void adc0_dma_isr(void);
+// extern void adc0_dma_isr(void);
 
-volatile int adc_data[ANALOG_BUFFER_SIZE]; // ADC_0 9-bit resolution for differential - sign + 8 bit
-volatile int value_buffer[25];
-//volatile int value_peak[ANALOG_BUFFER_SIZE];
-volatile uint8_t adc0_busy = 0;
-unsigned int freq = 400000;         //PDB frequency
-volatile int adc0Value = 0;         //analog value
-volatile int analogBufferIndex = 0; //analog buffer pointer
+volatile uint8_t adc_data[ANALOG_BUFFER_SIZE] = {}; // ADC_0 9-bit resolution for differential - sign + 8 bit
+volatile uint16_t value_buffer[25] = {};
+// volatile int value_peak[ANALOG_BUFFER_SIZE];
+volatile boolean adc0_busy = false;
+unsigned int freq = 400000;         // PDB frequency
+volatile int adc0Value = 0;         // analog value
+volatile int analogBufferIndex = 0; // analog buffer pointer
 volatile int delayOffset = 0;
 // sensor variables
 
 int hmdThresholdHyst = 13;
-
 
 // Timers
 IntervalTimer timer500us; // timer for motor speed and various timeouts
@@ -73,7 +73,7 @@ volatile long motorTimeOld = 0;
 volatile long motorTimeNow = 0;
 volatile int motorTimeDiff = 0;
 
-//Buttons
+// Buttons
 volatile int BtnPressedATimeout = 0;
 volatile int BtnPressedBTimeout = 0;
 volatile int BtnPressedCTimeout = 0;
@@ -122,7 +122,7 @@ void setup()
   InitVariables();
   // initialize LEDs and I/O
 
-  //pinMode(LED_BUILTIN, OUTPUT); //conflicts with SPI_CLK!!!
+  // pinMode(LED_BUILTIN, OUTPUT); //conflicts with SPI_CLK!!!
   pinMode(LED_POWER, OUTPUT);
   pinMode(LED_SIGNAL, OUTPUT);
   pinMode(LED_ALARM, OUTPUT);
@@ -164,13 +164,13 @@ void setup()
   EEPROM_init();
   checkSET();
 
-  //initialize filters
+  // initialize filters
   pinMode(FILTER_PIN, OUTPUT);
   digitalWriteFast(FILTER_PIN, LOW);
   filterOnOff.attach(FILTER_PIN);
   filterOnOff.interval(filterOn);
 
-  //initialize SPI
+  // initialize SPI
 
   pinMode(SPI_CS, OUTPUT);
   digitalWrite(SPI_CS, HIGH);
@@ -187,11 +187,12 @@ void setup()
 
   holdingRegs[EXEC_TIME] = 0;
 
-  //Serial.begin(modbusSpeed);
+  // Serial.begin(modbusSpeed);
 
-  modbus_configure(modbusSpeed, modbusFormat, modbusID, TXEN, TOTAL_REGS_SIZE, 0);
+  //modbus_configure(modbusSpeed, modbusFormat, modbusID, TXEN, TOTAL_REGS_SIZE, 0);
+  modbus_configure(modbusSpeed, modbusFormat, modbusID, TXEN, 1100, 0);  // for compatibility with old SDIS 
 
-  //initialize ADC
+  // initialize ADC
 
   ///// ADC0 in differential mode with PGA for signal from photodiode ////
 
@@ -206,7 +207,7 @@ void setup()
   adc->adc0->setConversionSpeed(ADC_CONVERSION_SPEED::VERY_HIGH_SPEED); // change the conversion speed
   // it can be ADC_VERY_LOW_SPEED, ADC_LOW_SPEED, ADC_MED_SPEED, ADC_HIGH_SPEED or ADC_VERY_HIGH_SPEED
   adc->adc0->setSamplingSpeed(ADC_SAMPLING_SPEED::VERY_HIGH_SPEED); // change the sampling speed
-  //adc->adc0->setReference(ADC_REFERENCE::REF_1V2); // use default 3.3V for input signal > 1.2V
+  // adc->adc0->setReference(ADC_REFERENCE::REF_1V2); // use default 3.3V for input signal > 1.2V
 
   adc->adc0->enablePGA(pga);
 
@@ -226,42 +227,42 @@ void setup()
   adc->adc1->setSamplingSpeed(ADC_SAMPLING_SPEED::VERY_LOW_SPEED);     // change the sampling speed
 
   // read once for setup everything
-  //adc->analogReadDifferential(A10, A11, ADC_0);             //start ADC_0 differential
-  adc->analogRead(ADC_INTERNAL_SOURCE::TEMP_SENSOR, ADC_1); //start ADC_1 single, temp sensor internal pin 38
+  // adc->analogReadDifferential(A10, A11, ADC_0);             //start ADC_0 differential
+  adc->analogRead(ADC_INTERNAL_SOURCE::TEMP_SENSOR, ADC_1); // start ADC_1 single, temp sensor internal pin 38
 
   // adc->enableInterrupts(ADC_0);
-  //adc->startContinuousDifferential(A10, A11, ADC_0);
+  // adc->startContinuousDifferential(A10, A11, ADC_0);
   adc->startContinuous(38, ADC_1); // do not want to accept ADC_INTERNAL_SOURCE::TEMP_SENSOR
 
-  //motor configuration and startup
+  // motor configuration and startup
   pinMode(MOTOR_ENABLE, OUTPUT);
-  digitalWrite(MOTOR_ENABLE, LOW); //motor enable
-  pinMode(MOTOR_CLK, OUTPUT);      //motor output pulses
+  digitalWrite(MOTOR_ENABLE, LOW); // motor enable
+  pinMode(MOTOR_CLK, OUTPUT);      // motor output pulses
 
-  pinMode(MOTOR_ALARM, INPUT_PULLUP); //motor input pulses
+  pinMode(MOTOR_ALARM, INPUT_PULLUP); // motor input pulses
   NVIC_SET_PRIORITY(IRQ_PORTD, 16);   // pin 14 - PortD, see schematic of Teensy 3.2
-  if (positionOffset < 1000)          //depends on motor HALL sensors & mirror position - choose the best to have no timing issues
+  if (positionOffset < 1000)          // depends on motor HALL sensors & mirror position - choose the best to have no timing issues
     attachInterrupt(digitalPinToInterrupt(MOTOR_ALARM), motor_isr, FALLING);
   else
     attachInterrupt(digitalPinToInterrupt(MOTOR_ALARM), motor_isr, RISING);
 
-  //NVIC_SET_PRIORITY(IRQ_PORTC, 0);
+  // NVIC_SET_PRIORITY(IRQ_PORTC, 0);
 
-  //motor slow start
+  // motor slow start
   timer500us.priority(0);
 
   for (int speed = 20; speed <= 100; speed++)
   {
     timer500us.end();
-    startTimerValue0 = timer500us.begin(timer500us_isr, 50000 / speed); //motor output pulses slowly going to 500us
+    startTimerValue0 = timer500us.begin(timer500us_isr, 50000 / speed); // motor output pulses slowly going to 500us
     displayPrint("Mot=%3d%%", speed);
     delay(100);
   }
 
   TeensyDelay::begin();
-  TeensyDelay::addDelayChannel(callback_delay, 0); //setup channel 0
+  TeensyDelay::addDelayChannel(callback_delay, 0); // setup channel 0
 
-  //clear data buffers
+  // clear data buffers
   memset((void *)adc0_buf, 0, sizeof(adc0_buf));
   memset((void *)adc_data, 0, sizeof(adc_data));
 }
@@ -281,7 +282,7 @@ void loop()
   // update modbus
   checkModbus();
 
-  //show info on LED display
+  // show info on LED display
   displayMenu();
 }
 
@@ -342,10 +343,10 @@ void checkTEST()
 
 void checkALARM()
 {
-  //check internal temperature
+  // check internal temperature
   temp = adc->adc1->readSingle();
-  //celsius = (181964504 - 69971 * temp12) >> 12 ; //Vref 1.2
-  celsius = 25.0 + 0.46977 * (892.43 - temp); //Vref 3.3
+  // celsius = (181964504 - 69971 * temp12) >> 12 ; //Vref 1.2
+  celsius = 25.0 + 0.46977 * (892.43 - temp); // Vref 3.3
   if (celsius > max_temperature)
   {
     max_temperature = celsius;
@@ -359,25 +360,26 @@ void checkALARM()
     total_runtime++;
     if ((total_runtime % 4) == 1)
     { // every 4 hours
+      total_runtime = total_runtime & 0xFFFF; // prevent overload
       eeprom_writeInt(EE_ADDR_total_runtime, total_runtime);
     }
   }
 
-  //check alarms
+  // check alarms
   if ((motorTimeDiff > (6000 + 50)) || (motorTimeDiff < (6000 - 50)))
-  { //motor alarm if not 6000us per rot.
+  { // motor alarm if not 6000us per rot.
     digitalWriteFast(LED_ALARM, HIGH);
-    digitalWriteFast(OUT_ALARM_NEG, LOW); //negative output 0V=ALARM
+    digitalWriteFast(OUT_ALARM_NEG, LOW); // negative output 0V=ALARM
     if (!alarmChecked)
     {
       currentMenu = MENU_ALARM;
       currentMenuOption = 0;
     }
-  }                                                                                                       //set ALARM
-  else if ((celsius > 55) || ((celsius > 50) && (currentMenu == MENU_ALARM) && (currentMenuOption == 1))) // 5 deg hysteresis internal temperature alarm
+  }                                                                                                       // set ALARM
+  else if ((celsius > 60) || ((celsius > 55) && (currentMenu == MENU_ALARM) && (currentMenuOption == 1))) // 5 deg hysteresis internal temperature alarm
   {                                                                                                       // temp alarm
     digitalWriteFast(LED_ALARM, HIGH);
-    digitalWriteFast(OUT_ALARM_NEG, LOW); //negative output 0V=ALARM
+    digitalWriteFast(OUT_ALARM_NEG, LOW); // negative output 0V=ALARM
     if (!alarmChecked)
     {
       currentMenu = MENU_ALARM;
@@ -386,7 +388,7 @@ void checkALARM()
   }
   else if (extTest)
   {
-    digitalWriteFast(OUT_ALARM_NEG, HIGH); //NO ALARM => negative output: 24V=OK , but keep LED_ALARM blinking
+    digitalWriteFast(OUT_ALARM_NEG, HIGH); // NO ALARM => negative output: 24V=OK , but keep LED_ALARM blinking
     if (!alarmChecked)
     {
       currentMenu = MENU_ALARM;
@@ -395,7 +397,7 @@ void checkALARM()
   }
   else if (intTest && (currentMenu != MENU_SETUP))
   {
-    digitalWriteFast(OUT_ALARM_NEG, HIGH); //NO ALARM => negative output: 24V=OK, but keep LED_ALARM blinking
+    digitalWriteFast(OUT_ALARM_NEG, HIGH); // NO ALARM => negative output: 24V=OK, but keep LED_ALARM blinking
     if (!alarmChecked)
     {
       currentMenu = MENU_ALARM;
@@ -404,8 +406,8 @@ void checkALARM()
   }
   else
   {                                        // no alarm, no warnings
-    digitalWriteFast(LED_ALARM, LOW);      //no ALARM
-    digitalWriteFast(OUT_ALARM_NEG, HIGH); //negative output: 24V=OK
+    digitalWriteFast(LED_ALARM, LOW);      // no ALARM
+    digitalWriteFast(OUT_ALARM_NEG, HIGH); // negative output: 24V=OK
     alarmChecked = false;
     if (currentMenu == MENU_ALARM)
     {
@@ -497,11 +499,11 @@ void checkButtonD()
 //*****************************************************************
 // Timer interrupts
 void timer500us_isr(void)
-{ //every 500us
-  //motor pulse
+{ // every 500us
+  // motor pulse
   digitalWriteFast(MOTOR_CLK, !digitalReadFast(MOTOR_CLK));
 
-  //update timeouts
+  // update timeouts
 
   if (refreshMenuTimeout)
   {
@@ -538,7 +540,7 @@ void timer500us_isr(void)
     }
   }
 
-  //buttons timeouts
+  // buttons timeouts
   if (BtnPressedATimeout)
   {
     BtnPressedATimeout--;
@@ -619,12 +621,13 @@ void motor_isr(void)
     motorPulseIndex = 0;
   } // one time per turn
 
-  if ((motorTimeDiff < (6000 + 50)) && (motorTimeDiff > (6000 - 50))) //motor is at full speed 6000us per rot, no motor alarm.
+  if ((motorTimeDiff < (6000 + 50)) && (motorTimeDiff > (6000 - 50))) // motor is at full speed 6000us per rot, no motor alarm.
   {
     holdingRegs[EXEC_TIME_TRIGGER] = micros() - pulsetime;
     delayOffset = (positionOffset % 1000 - holdingRegs[EXEC_TIME_TRIGGER]) % 1000; // compensation for HALL magnets position
     if (delayOffset < 0)                                                           // rotate delayOffset between 0 - 1000
       delayOffset = 1000 + delayOffset;
+
     TeensyDelay::trigger(delayOffset, 0);
   }
 }
@@ -636,37 +639,36 @@ void callback_delay()
     exectime = micros();
     memset((void *)adc0_buf, 0, sizeof(adc0_buf)); // clear DMA buffer
 
-    //adc0_busy = 1;
+    // adc0_busy = 1;
 
     // update PGA
     adc->adc0->enablePGA(pga);
-    adc->analogReadDifferential(A10, A11, ADC_0); //start ADC_0 differential
-
-    //adc0_dma.enable();
+    adc->analogReadDifferential(A10, A11, ADC_0); // start ADC_0 differential - to use PGA
+    // adc->analogRead(A10,ADC_0); // PGA is not working in single channel mode
+    // adc0_dma.enable();
     adc->adc0->enableDMA();
     adc0_dma.enable();
 
     NVIC_DISABLE_IRQ(IRQ_PDB);
-    //Serial.println("Start PDB");
-    adc->adc0->startPDB(freq); //check ADC_Module::startPDB() in ADC_Module.cpp for //NVIC_ENABLE_IRQ(IRQ_PDB);
-
+    // Serial.println("Start PDB");
+    adc->adc0->startPDB(freq); // check ADC_Module::startPDB() in ADC_Module.cpp for //NVIC_ENABLE_IRQ(IRQ_PDB);
+    adc0_busy = true;
     updateResults(); // update outputs from adc_data[] during next ADC conversion
     holdingRegs[EXEC_TIME] = micros() - exectime;
   }
   else
   {
     holdingRegs[EXEC_TIME] = motorPulseIndex; // just for debugging
-    //adc0_dma_isr();
+    // adc0_dma_isr();
   }
-  adc0_busy = true;
 }
 
 void adc0_dma_isr(void)
 {
   adc0_dma.clearInterrupt();
   adc0_dma.clearComplete();
-  //Serial.println("DMA interrupt");
-  //PDB0_CH1C1 = 0; // clear PDB channel control register - should be implemented in stopPDB()
+  // Serial.println("DMA interrupt");
+  // PDB0_CH1C1 = 0; // clear PDB channel control register - should be implemented in stopPDB()
   PDB0_CH0C1 = 0;
 
   adc->adc0->stopPDB();
@@ -676,7 +678,8 @@ void adc0_dma_isr(void)
 
   for (int i = 0; i < ANALOG_BUFFER_SIZE; i++) // copy DMA buffer
   {
-    if (adc0_buf[i] < 0)
+    // adc_data[i]=(adc0_buf[i] + 256) >> 1; // full scale signal signed 9bit to unsigned 8bit
+    if (adc0_buf[i] < 0) // only positive wave of signal 8bit
       adc_data[i] = 0;
     else
       adc_data[i] = adc0_buf[i];
@@ -692,7 +695,7 @@ void updateResults()
   int winBegin = 0;
   int winEnd = 0;
   int peakValue = 0;
-  int peak[ANALOG_BUFFER_SIZE] = {0};
+  int peak[ANALOG_BUFFER_SIZE] = {};
   long risingEdgeTime = 0;
   long fallingEdgeTime = 0;
   long peakValueTime = 0;
@@ -716,7 +719,7 @@ void updateResults()
     }
 
     if (i == winBegin)
-      peak[i] = adc_data[i]; //check first peak
+      peak[i] = adc_data[i]; // check first peak
 
     if ((i > winBegin) && (i < winEnd)) // if value is inside the measuring window
     {
@@ -793,7 +796,7 @@ void updateResults()
 
   if (filterOnOff.fell())
   {
-    filterOnOff.interval(filterOn); //update filter interval
+    filterOnOff.interval(filterOn); // update filter interval
     digitalWriteFast(LED_SIGNAL, LOW);
     digitalWriteFast(OUT_SIGNAL_NEG, HIGH);
   }
@@ -840,7 +843,7 @@ void updateResults()
   }
 
   switch (analogOutMode)
-  { //an1/an2: "1Int2Pos" = 0, "1Pos2Int" = 1, "1Int2Int" = 2, "1Pos2Pos" = 3
+  { // an1/an2: "1Int2Pos" = 0, "1Pos2Int" = 1, "1Int2Int" = 2, "1Pos2Pos" = 3
   case 0:
     updateSPI(peakValue, positionValue); // range is 2x 16bit
     break;
@@ -855,12 +858,13 @@ void updateResults()
     break;
   }
 
-  //if (dataSent && motorPulseIndex == 0) // prepare data for visualization on PC, only first mirror
+  // if (dataSent && motorPulseIndex == 0) // prepare data for visualization on PC, only first mirror
   if (dataSent && motorPulseIndex == (filterPosition % 6)) // possibility to view different mirrors by changing positionFilter
   {
-    for (byte i = 0; i < (MOTOR_TIME_DIFF - AN_VALUES); i++) // MOTOR_TIME_DIFF = AN_VALUES + 25
+    for (int i = 0; i < 25; i++) // MOTOR_TIME_DIFF = AN_VALUES + 25
     {
-      value_buffer[i] = adc_data[i * 8 + 4] << 8 | adc_data[i * 8]; // MSB = value_buffer[i*8+4] , LSB = value_buffer[i*8] ; only 50 of 200
+      value_buffer[i] = (adc_data[(i * 8) + 4] % 256 << 8) | (adc_data[i * 8] % 256); // MSB = value_buffer[i*8+4] , LSB = value_buffer[i*8] ; only 50 of 200
+      // value_buffer[i] = adc_data[i*8];
     }
 
     dataSent = false;
@@ -1007,7 +1011,8 @@ void checkModbus()
     // restart communication
     Serial1.flush();
     Serial1.end();
-    modbus_configure(modbusSpeed, modbusFormat, modbusID, TXEN, TOTAL_REGS_SIZE, 0);
+    //modbus_configure(modbusSpeed, modbusFormat, modbusID, TXEN, TOTAL_REGS_SIZE, 0);
+    modbus_configure(modbusSpeed, modbusFormat, modbusID, TXEN, 1100, 0); // for compatibility with old SDIS
   }
 
   if (holdingRegs[SET] != set && holdingRegs[SET] < 3)
@@ -1094,6 +1099,10 @@ void checkModbus()
   {
     positionOffset = holdingRegs[POSITION_OFFSET];
     eeprom_writeInt(EE_ADDR_position_offset, positionOffset);
+    if (positionOffset < 1000) // depends on motor HALL sensors & mirror position - choose the best to have no timing issues
+      attachInterrupt(digitalPinToInterrupt(MOTOR_ALARM), motor_isr, FALLING);
+    else
+      attachInterrupt(digitalPinToInterrupt(MOTOR_ALARM), motor_isr, RISING);
   }
 
   if (holdingRegs[FILTER_POSITION] != filterPosition && holdingRegs[FILTER_POSITION] < 10000)
@@ -1141,7 +1150,7 @@ void checkModbus()
   }
 }
 
-//check void ADC_Module::startPDB() in ADC_Module.cpp for //NVIC_ENABLE_IRQ(IRQ_PDB);
+// check void ADC_Module::startPDB() in ADC_Module.cpp for //NVIC_ENABLE_IRQ(IRQ_PDB);
 
 // pdb interrupt is enabled in case you need it.
 // void pdb_isr(void) {
@@ -1153,23 +1162,21 @@ void checkModbus()
 
 void InitVariables()
 {
-modbusID = 1;
+  modbusID = 1;
 
+  actualSpeed = 3;     // array index
+  modbusSpeed = 19200; // default 19200
 
-actualSpeed = 3;                                                   // array index
-modbusSpeed = 19200;            // default 19200
+  actualFormat = 1;
+  modbusFormat = SERIAL_8N1;
 
+  max_temperature = 0;
 
-actualFormat = 1;
-modbusFormat = SERIAL_8N1;
+  dataSent = false;
+  sendNextLn = 0;
+  io_state = 0;
+  exectime = 0;
+  pulsetime = 0;
 
-max_temperature = 0;
-
-dataSent = false;
-sendNextLn = 0;
-io_state = 0;
-exectime = 0;
-pulsetime = 0;
-
-total_runtime = 0;
+  total_runtime = 0;
 }
