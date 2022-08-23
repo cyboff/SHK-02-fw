@@ -34,8 +34,9 @@ extern LedDisplay myDisplay;
 #define MENU_WINDOW_BEGIN 241
 #define MENU_WINDOW_END 242
 #define MENU_POSITION_MODE 243
-#define MENU_ANALOG_OUT_MODE 244
-#define MENU_POSITION_OFFSET 245
+#define MENU_ANALOG_OUT1_MODE 244
+#define MENU_ANALOG_OUT2_MODE 245
+#define MENU_POSITION_OFFSET 246
 
 #define MENU_INFO 25
 #define MENU_RESET 251
@@ -80,7 +81,8 @@ void showAnalogMenu(void);
 void setWindowBegin(void);
 void setWindowEnd(void);
 void setPositionMode(void);
-void setAnalogOutMode(void);
+void setAnalogOut1Mode(void);
+void setAnalogOut2Mode(void);
 void setPositionOffset(void);
 void showInfoMenu(void);
 void showResetMenu(void);

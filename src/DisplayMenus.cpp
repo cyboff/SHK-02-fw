@@ -45,11 +45,11 @@ unsigned int menu_modbusFormat = SERIAL_8N1;
 
 int menu_windowBegin, menu_windowEnd, menu_positionOffset, menu_positionMode, menu_analogOutMode;
 int menu_filterPosition, menu_filterOn, menu_filterOff;
-const char *menu_positionModeDisp[] = {" HMD", "RISE", "FALL", "PEAK"};
-const char *menu_analogOutModeDisp[] = {"1I2P", "1P2I", "1I2I", "1P2P"};
+const char *menu_positionModeDisp[] = {"RISE", "FALL", "PEAK", " HMD"};
+const char *menu_analogOutModeDisp[] = {"Pos", "Int"};
 
 
-const char *menu_setDisp[] = {"REL ", "REL1", "REL2", "MAN1", "MAN2"};
+const char *menu_setDisp[] = {"MAN1", "MAN2", "REL ", "REL1", "REL2"};
 int setDispIndex = 0;
 int menu_pga;
 int menu_thre;
@@ -225,8 +225,11 @@ void displayMenu(void)
     case MENU_POSITION_MODE:
       setPositionMode();
       break;
-    case MENU_ANALOG_OUT_MODE:
-      setAnalogOutMode();
+    case MENU_ANALOG_OUT1_MODE:
+      setAnalogOut1Mode();
+      break;
+    case MENU_ANALOG_OUT2_MODE:
+      setAnalogOut2Mode();
       break;
     case MENU_POSITION_OFFSET:
       setPositionOffset();
@@ -758,14 +761,14 @@ void setSetMenu(void)
 
   switch (menu_set)
   { // display correct text
-  case 0:
-    setDispIndex = 0; // REL
-    break;
   case 1:
-    setDispIndex = 3; // MAN1
+    setDispIndex = 0; // MAN1
     break;
   case 2:
-    setDispIndex = 4; // MAN2
+    setDispIndex = 1; // MAN2
+    break;
+  case 3:
+    setDispIndex = 2; // REL
     break;
   default:
     break;
@@ -778,17 +781,17 @@ void setSetMenu(void)
 
   if (lastKey == BTN_B || lastKey == BTN_BH)
   {
-    if (menu_set > 0)
+    if (menu_set > 1)
       menu_set--;
     else
-      menu_set = 2;
+      menu_set = 3;
   }
   if (lastKey == BTN_C || lastKey == BTN_CH)
   { // increment by 1
-    if (menu_set < 2)
+    if (menu_set < 3)
       menu_set++;
     else
-      menu_set = 0;
+      menu_set = 1;
   }
 
   if (lastKey == BTN_A || lastKey == BTN_AH)
@@ -1299,10 +1302,12 @@ void showAnalogMenu(void)
   if (currentMenuOption == 1)
     displayPrint("wEnd%3d%%", windowEnd);
   if (currentMenuOption == 2)
-    displayPrint("mPos%s", menu_positionModeDisp[positionMode]);
+    displayPrint("mPos%s", menu_positionModeDisp[positionMode-1]);
   if (currentMenuOption == 3)
-    displayPrint("AnO %s", menu_analogOutModeDisp[analogOutMode]);
+    displayPrint("AnO1 %s", menu_analogOutModeDisp[analogOutMode >> 10]);
   if (currentMenuOption == 4)
+    displayPrint("AnO2 %s", menu_analogOutModeDisp[(analogOutMode & 0xFF) >> 2]);
+  if (currentMenuOption == 5)
     displayPrint("Offs%4d", positionOffset);
 
   if (lastKey == BTN_A || lastKey == BTN_AH)
@@ -1316,12 +1321,12 @@ void showAnalogMenu(void)
     if (currentMenuOption > 0)
       currentMenuOption--;
     else
-      currentMenuOption = 4;
+      currentMenuOption = 5;
   }
 
   if (lastKey == BTN_C || lastKey == BTN_CH)
   {
-    if (currentMenuOption < 4)
+    if (currentMenuOption < 5)
       currentMenuOption++;
     else
       currentMenuOption = 0;
@@ -1345,15 +1350,21 @@ void showAnalogMenu(void)
     {
       currentMenu = MENU_POSITION_MODE;
       currentMenuOption = 0;
-      menu_positionMode = positionMode;
+      menu_positionMode = positionMode-1;
     }
     if (currentMenuOption == 3)
     {
-      currentMenu = MENU_ANALOG_OUT_MODE;
+      currentMenu = MENU_ANALOG_OUT1_MODE;
       currentMenuOption = 0;
-      menu_analogOutMode = analogOutMode;
+      menu_analogOutMode = analogOutMode >> 10;
     }
     if (currentMenuOption == 4)
+    {
+      currentMenu = MENU_ANALOG_OUT2_MODE;
+      currentMenuOption = 0;
+      menu_analogOutMode = (analogOutMode & 0xFF) >> 2;
+    }
+    if (currentMenuOption == 5)
     {
       currentMenu = MENU_POSITION_OFFSET;
       currentMenuOption = 0;
@@ -1451,7 +1462,7 @@ void setPositionMode(void)
   if (!menuTimeout)
     menuTimeout = TIMEOUT_MENU;
 
-  // positionMode: HMD = 0, RISE = 1, FALL = 2, PEAK = 3
+  // positionMode: RISE = 1, FALL = 2, PEAK = 3, HMD = 4 
   if (blinkMenu)
     displayPrint("mPos%s", menu_positionModeDisp[menu_positionMode]);
   else
@@ -1481,7 +1492,7 @@ void setPositionMode(void)
 
   if (lastKey == BTN_D || lastKey == BTN_DH)
   { // SAVE
-    positionMode = menu_positionMode;
+    positionMode = menu_positionMode+1;
     eeprom_writeInt(EE_ADDR_position_mode, positionMode); //save to EEPROM
     displayPrint("SAVED!!!");
     delay(500);
@@ -1490,31 +1501,31 @@ void setPositionMode(void)
   }
 }
 
-void setAnalogOutMode(void)
+void setAnalogOut1Mode(void)
 {
   if (!menuTimeout)
     menuTimeout = TIMEOUT_MENU;
 
-  // positionMode: HMD = 0, RISE = 1, FALL = 2, PEAK = 3
+  
   if (blinkMenu)
-    displayPrint("AnO %s", menu_analogOutModeDisp[menu_analogOutMode]);
+    displayPrint("AnO1 %s", menu_analogOutModeDisp[menu_analogOutMode]);
   else
-    displayPrint("    %s", menu_analogOutModeDisp[menu_analogOutMode]);
+    displayPrint("     %s", menu_analogOutModeDisp[menu_analogOutMode]);
 
   if (lastKey == BTN_B || lastKey == BTN_BH)
   {
     if (menu_analogOutMode > 0)
       menu_analogOutMode--;
     else
-      menu_analogOutMode = 3;
+      menu_analogOutMode = 1; // INT 5Hi
   }
 
   if (lastKey == BTN_C || lastKey == BTN_CH)
   { // increment by 1
-    if (menu_analogOutMode < 3)
+    if (menu_analogOutMode < 1)
       menu_analogOutMode++;
     else
-      menu_analogOutMode = 0;
+      menu_analogOutMode = 0; // POS 1Hi
   }
 
   if (lastKey == BTN_A || lastKey == BTN_AH)
@@ -1525,12 +1536,56 @@ void setAnalogOutMode(void)
 
   if (lastKey == BTN_D || lastKey == BTN_DH)
   { // SAVE
-    analogOutMode = menu_analogOutMode;
+    if (menu_analogOutMode) {analogOutMode |= (1 << 10);} else {analogOutMode &= ~(1 << 10);}  // set vs clear bit: 0x05XX vs 0x01XX
     eeprom_writeInt(EE_ADDR_analog_out_mode, analogOutMode); //save to EEPROM
     displayPrint("SAVED!!!");
     delay(500);
     currentMenu = MENU_ANALOG;
     currentMenuOption = 3;
+  }
+}
+
+void setAnalogOut2Mode(void)
+{
+  if (!menuTimeout)
+    menuTimeout = TIMEOUT_MENU;
+
+  
+  if (blinkMenu)
+    displayPrint("AnO2 %s", menu_analogOutModeDisp[menu_analogOutMode]);
+  else
+    displayPrint("     %s", menu_analogOutModeDisp[menu_analogOutMode]);
+
+  if (lastKey == BTN_B || lastKey == BTN_BH)
+  {
+    if (menu_analogOutMode > 0)
+      menu_analogOutMode--;
+    else
+      menu_analogOutMode = 1; // INT 5Lo
+  }
+
+  if (lastKey == BTN_C || lastKey == BTN_CH)
+  { // increment by 1
+    if (menu_analogOutMode < 1)
+      menu_analogOutMode++;
+    else
+      menu_analogOutMode = 0; // POS 1Lo
+  }
+
+  if (lastKey == BTN_A || lastKey == BTN_AH)
+  {
+    currentMenu = MENU_ANALOG;
+    currentMenuOption = 4;
+  }
+
+  if (lastKey == BTN_D || lastKey == BTN_DH)
+  { // SAVE
+    if (menu_analogOutMode) {analogOutMode |= (1 << 2);} else {analogOutMode &= ~(1 << 2);}  // set vs clear bit: 0xXX05 vs 0xXX01
+    eeprom_writeInt(EE_ADDR_analog_out_mode, analogOutMode); //save to EEPROM
+    displayPrint("SAVED!!!");
+    delay(500);
+    currentMenu = MENU_ANALOG;
+    currentMenuOption = 4;
   }
 }
 
@@ -1571,7 +1626,7 @@ void setPositionOffset(void)
   if (lastKey == BTN_A || lastKey == BTN_AH)
   {
     currentMenu = MENU_ANALOG;
-    currentMenuOption = 4;
+    currentMenuOption = 5;
   }
 
   if (lastKey == BTN_D || lastKey == BTN_DH)
@@ -1582,7 +1637,7 @@ void setPositionOffset(void)
     displayPrint("SAVED!!!");
     delay(500);
     currentMenu = MENU_ANALOG;
-    currentMenuOption = 4;
+    currentMenuOption = 5;
   }
 }
 

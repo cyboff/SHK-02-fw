@@ -136,9 +136,7 @@ uint16_t modbus_update(uint16_t *holdingRegs)
                   temp = holdingRegs[ANALOG_OUT_MODE];
                   break;
                 case 10:
-                case 100:
-                case 107:
-                  temp = set; // actual set
+                  temp = 256*set + ((digitalRead(SET_IN)+1) & 0xFF); // set MAN1 = 1, MAN2 = 2, RELAY = 3
                   break;
                 case 11:
                   temp = pga*100; // actual gain
@@ -151,31 +149,39 @@ uint16_t modbus_update(uint16_t *holdingRegs)
                 case 106:
                   temp = 10*100; // threshold hysteresis is fixed 10%
                   break;
+                case 100:
+                  temp = set; // set MAN1 = 1, MAN2 = 2, RELAY = 3
+                  break;
+                case 107:
+                  temp = digitalRead(SET_IN)+1;
+                  break;
                 case 101:
-                  temp = holdingRegs[GAIN_SET1]*100;
+                  temp = holdingRegs[GAIN_SET1];
                   break;
                 case 102:
-                  temp = holdingRegs[GAIN_SET2]*100;
+                  temp = holdingRegs[GAIN_SET2];
                   break;
                 case 103:
-                  temp = holdingRegs[THRESHOLD_SET1]*100;
+                  temp = holdingRegs[THRESHOLD_SET1];
                   break;  
                 case 104:
-                  temp = holdingRegs[THRESHOLD_SET2]*100;
+                  temp = holdingRegs[THRESHOLD_SET2];
                   break;
                 case 120:
-                  temp = holdingRegs[WINDOW_BEGIN]*100;
+                  temp = holdingRegs[WINDOW_BEGIN];
                   break;
                 case 121:
-                  temp = holdingRegs[WINDOW_END]*100;
+                  temp = holdingRegs[WINDOW_END];
                   break;
                 case 122:
                 case 123:
                   temp = 5*100; // window hysteresis is fixed 5% 
                   break;
                 case 130:
+                  temp = holdingRegs[ANALOG_OUT_MODE] >> 8;
+                  break;
                 case 131:
-                  temp = holdingRegs[ANALOG_OUT_MODE];
+                  temp = holdingRegs[ANALOG_OUT_MODE] & 0xFF;
                   break;
                 case 132:
                 case 133:
@@ -217,13 +223,13 @@ uint16_t modbus_update(uint16_t *holdingRegs)
                   temp = holdingRegs[ACT_TEMPERATURE];
                   break;
                 case 441:
-                  temp = 60; // temperature alarm
+                  temp = 60 * 256; // temperature alarm
                   break;
                 case 442:
                   temp = holdingRegs[MAX_TEMPERATURE];
                   break;
                 case 443:
-                  temp = 5; // temperature alarm hysteresis
+                  temp = 5 * 256; // temperature alarm hysteresis
                   break;
                 case 1066:
                   temp = holdingRegs[EXEC_TIME_ADC];
@@ -280,10 +286,45 @@ uint16_t modbus_update(uint16_t *holdingRegs)
               //holdingRegs[startingAddress] = regStatus;   // original
               switch (startingAddress)
               {
-              case 1:
-                holdingRegs[startingAddress] = regStatus;
+              case 100:
+                holdingRegs[SET] = regStatus;
                 break;
-              
+              case 101:
+                if (regStatus >= 6400) {holdingRegs[GAIN_SET1] = 6400;} else
+                if (regStatus >= 3200) {holdingRegs[GAIN_SET1] = 3200;} else
+                if (regStatus >= 1600) {holdingRegs[GAIN_SET1] = 1600;} else
+                if (regStatus >= 800) {holdingRegs[GAIN_SET1] = 800;} else
+                if (regStatus >= 400) {holdingRegs[GAIN_SET1] = 400;} else
+                if (regStatus >= 200) {holdingRegs[GAIN_SET1] = 200;} else
+                holdingRegs[GAIN_SET1] = 100;
+                break;
+              case 102:
+                if (regStatus >= 6400) {holdingRegs[GAIN_SET2] = 6400;} else
+                if (regStatus >= 3200) {holdingRegs[GAIN_SET2] = 3200;} else
+                if (regStatus >= 1600) {holdingRegs[GAIN_SET2] = 1600;} else
+                if (regStatus >= 800) {holdingRegs[GAIN_SET2] = 800;} else
+                if (regStatus >= 400) {holdingRegs[GAIN_SET2] = 400;} else
+                if (regStatus >= 200) {holdingRegs[GAIN_SET2] = 200;} else
+                holdingRegs[GAIN_SET2] = 100;
+                break;
+              case 103:
+                holdingRegs[THRESHOLD_SET1] = regStatus;
+                break;
+              case 104:
+                holdingRegs[THRESHOLD_SET2] = regStatus;
+                break;
+              case 120:
+                holdingRegs[WINDOW_BEGIN] = regStatus;
+                break;
+              case 121:
+                holdingRegs[WINDOW_END] = regStatus;
+                break;
+              case 130:
+                holdingRegs[ANALOG_OUT_MODE] = (holdingRegs[ANALOG_OUT_MODE] & 0x00FF) + (256*regStatus);
+                break;
+              case 131:
+                holdingRegs[ANALOG_OUT_MODE] = (holdingRegs[ANALOG_OUT_MODE] & 0xFF00) + (regStatus & 0xFF);
+                break;
               default:
                 break;
               }

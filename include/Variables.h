@@ -90,30 +90,30 @@ enum
   MODBUS_SPEED,  // baud rate/100 to fit into word
   MODBUS_FORMAT, // SERIAL_8N1 = 0, SERIAL_8E1 = 6, SERIAL_8O1 = 7 , SERIAL_8N2 = 4
 
-  SET,            // RELAY = 0 (REL1 || REL2), MAN1 = 1, MAN2 = 2
-  GAIN_SET1,      // valid values 1,2,4,8,16,32,64
-  THRESHOLD_SET1, // min 20, max 80
-  GAIN_SET2,      // valid values 1,2,4,8,16,32,64
-  THRESHOLD_SET2, // min 20, max 80
+  SET,            // MAN1 = 1, MAN2 = 2, RELAY = 3 (REL1 || REL2),
+  GAIN_SET1,      // valid values 1,2,4,8,16,32,64 * 100
+  THRESHOLD_SET1, // min 20, max 80 * 100
+  GAIN_SET2,      // valid values 1,2,4,8,16,32,64 * 100
+  THRESHOLD_SET2, // min 20, max 80 * 100
 
-  WINDOW_BEGIN,    // min 5, max 50
-  WINDOW_END,      // min 50 max 95
-  POSITION_MODE,   // hmd = 0, rising = 1, falling = 2, peak = 3
-  ANALOG_OUT_MODE, // an1/an2: "1Int2Pos" = 0, "1Pos2Int" = 1, "1Int2Int" = 2, "1Pos2Pos" = 3
-  POSITION_OFFSET, // min 5, max 95 to avoid coincidence with pulse interrupts
+  WINDOW_BEGIN,    // min 5, max 50 * 100
+  WINDOW_END,      // min 50 max 95 * 100
+  POSITION_MODE,   // rising = 1, falling = 2, peak = 3 , hmd = 4
+  ANALOG_OUT_MODE, // an1/an2: "1Int 2Pos" = 0x0501, "1Pos 2Int" = 0x0105, "1Int 2Int" = 0x0505, "1Pos 2Pos" = 0x0101
+  POSITION_OFFSET, // min 0, max 2000 
 
   FILTER_POSITION, // range 0 - 9999 ms (or nr of mirrors) for moving average
   FILTER_ON,       // range 0 - 9999 ms
   FILTER_OFF,      // range 0 - 9999 ms
 
-  ACT_TEMPERATURE,
-  MAX_TEMPERATURE,
+  ACT_TEMPERATURE,  // act_temp * 256
+  MAX_TEMPERATURE,  // max_temp * 256
   TOTAL_RUNTIME,
   IO_STATE,
 
-  PEAK_VALUE,
-  POSITION_VALUE,
-  POSITION_VALUE_AVG,
+  PEAK_VALUE,       // 0-100% * 100
+  POSITION_VALUE,   // 0-100% * 100
+  POSITION_VALUE_AVG,  // 0-100% * 100
 
   AN_VALUES, // 25 registers
   MOTOR_TIME_DIFF = AN_VALUES + 25,

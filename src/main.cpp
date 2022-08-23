@@ -290,31 +290,31 @@ void loop()
 // check SET and load proper settings
 void checkSET()
 {
-  switch (set)
+  switch (set)  // RELAY = 3 (REL1 || REL2), MAN1 = 1, MAN2 = 2
   {
-  case 0:
+  case 1:
+    pga = pga1;
+    thre = thre1;
+    setDispIndex = 0; // MAN1
+    break;
+  case 2:
+    pga = pga2;
+    thre = thre2;
+    setDispIndex = 1; // MAN2
+    break;
+  case 3:             // REL
     if (digitalRead(SET_IN))
     {
       pga = pga1;
       thre = thre1;
-      setDispIndex = 1;
+      setDispIndex = 3; // REL1
     }
     else
     {
       pga = pga2;
       thre = thre2;
-      setDispIndex = 2;
+      setDispIndex = 4; // REL2
     }
-    break;
-  case 1:
-    pga = pga1;
-    thre = thre1;
-    setDispIndex = 3;
-    break;
-  case 2:
-    pga = pga2;
-    thre = thre2;
-    setDispIndex = 4;
     break;
   default:
     break;
@@ -734,7 +734,7 @@ void updateResults()
       if (peakValue > hmdThreshold) // check threshold crossing with hysteresis
       {
         // HMD mode
-        if ((positionMode == 0) && !peakValueTime)
+        if ((positionMode == 4) && !peakValueTime)
         {
           peakValueTime = i * 5;
           digitalWriteFast(FILTER_PIN, HIGH); // update internal pin for bounce2 filter
@@ -812,9 +812,10 @@ void updateResults()
       positionValueDisp = fallingEdgeTime;
       break;
     case 3:
-    case 0:
+    case 4:
       positionValueDisp = peakValueTime;
       break;
+    default: break;
     }
   }
   else
@@ -843,18 +844,21 @@ void updateResults()
   }
 
   switch (analogOutMode)
-  { // an1/an2: "1Int2Pos" = 0, "1Pos2Int" = 1, "1Int2Int" = 2, "1Pos2Pos" = 3
-  case 0:
+  { // an1/an2: "1Int 2Pos" = 0x0501, "1Pos 2Int" = 0x0105, "1Int 2Int" = 0x0505, "1Pos 2Pos" = 0x0101
+  case 0x0501:
     updateSPI(peakValue, positionValue); // range is 2x 16bit
     break;
-  case 1:
+  case 0x0105:
     updateSPI(positionValue, peakValue);
     break;
-  case 2:
+  case 0x0505:
     updateSPI(peakValue, peakValue);
     break;
-  case 3:
+  case 0x0101:
     updateSPI(positionValue, positionValue);
+    break;
+  default:
+    updateSPI(peakValue, positionValue); // range is 2x 16bit
     break;
   }
 
@@ -918,13 +922,13 @@ void checkModbus()
   holdingRegs[MODBUS_FORMAT] = modbusFormat;
 
   holdingRegs[SET] = set;
-  holdingRegs[GAIN_SET1] = pga1;
-  holdingRegs[THRESHOLD_SET1] = thre1;
-  holdingRegs[GAIN_SET2] = pga2;
-  holdingRegs[THRESHOLD_SET2] = thre2;
+  holdingRegs[GAIN_SET1] = pga1 * 100;
+  holdingRegs[THRESHOLD_SET1] = thre1 * 100;
+  holdingRegs[GAIN_SET2] = pga2 * 100;
+  holdingRegs[THRESHOLD_SET2] = thre2 * 100;
 
-  holdingRegs[WINDOW_BEGIN] = windowBegin;
-  holdingRegs[WINDOW_END] = windowEnd;
+  holdingRegs[WINDOW_BEGIN] = windowBegin * 100;
+  holdingRegs[WINDOW_END] = windowEnd * 100;
   holdingRegs[POSITION_MODE] = positionMode;
   holdingRegs[ANALOG_OUT_MODE] = analogOutMode;
   holdingRegs[POSITION_OFFSET] = positionOffset;
@@ -933,8 +937,8 @@ void checkModbus()
   holdingRegs[FILTER_ON] = filterOn;
   holdingRegs[FILTER_OFF] = filterOff;
 
-  holdingRegs[ACT_TEMPERATURE] = celsius;
-  holdingRegs[MAX_TEMPERATURE] = max_temperature;
+  holdingRegs[ACT_TEMPERATURE] = celsius * 256;
+  holdingRegs[MAX_TEMPERATURE] = max_temperature * 256;
   holdingRegs[TOTAL_RUNTIME] = total_runtime;
   holdingRegs[IO_STATE] = io_state;
 
@@ -942,9 +946,9 @@ void checkModbus()
   holdingRegs[OFFSET_DELAY] = delayOffset;
 
   // updated in updateResults()
-  holdingRegs[PEAK_VALUE] = peakValueDisp;
-  holdingRegs[POSITION_VALUE] = positionValueDisp;
-  holdingRegs[POSITION_VALUE_AVG] = positionValueAvgDisp;
+  holdingRegs[PEAK_VALUE] = peakValueDisp * 100;         // 0-10000  0-100% * 100
+  holdingRegs[POSITION_VALUE] = positionValueDisp * 10;  // 0-10000
+  holdingRegs[POSITION_VALUE_AVG] = positionValueAvgDisp * 10; // 0-10000
 
   if (!dataSent)
   {
@@ -1015,24 +1019,24 @@ void checkModbus()
     modbus_configure(modbusSpeed, modbusFormat, modbusID, TXEN, 1100, 0); // for compatibility with old SDIS
   }
 
-  if (holdingRegs[SET] != set && holdingRegs[SET] < 3)
-  { // RELAY = 0 (REL1 || REL2), MAN1 = 1, MAN2 = 2
+  if (holdingRegs[SET] != set && holdingRegs[SET] < 4)
+  { // RELAY = 3 (REL1 || REL2), MAN1 = 1, MAN2 = 2
     set = holdingRegs[SET];
     eeprom_writeInt(EE_ADDR_set, set);
   }
 
-  if (holdingRegs[GAIN_SET1] != pga1)
+  if (holdingRegs[GAIN_SET1] != pga1 * 100)
   {
     switch (holdingRegs[GAIN_SET1])
     { // check for valid values
-    case 1:
-    case 2:
-    case 4:
-    case 8:
-    case 16:
-    case 32:
-    case 64:
-      pga1 = holdingRegs[GAIN_SET1];
+    case 100:
+    case 200:
+    case 400:
+    case 800:
+    case 1600:
+    case 3200:
+    case 6400:
+      pga1 = holdingRegs[GAIN_SET1] / 100;
       eeprom_writeInt(EE_ADDR_gain_set1, pga1);
       break;
     default:
@@ -1040,9 +1044,9 @@ void checkModbus()
     }
   }
 
-  if (holdingRegs[THRESHOLD_SET1] != thre1 && holdingRegs[THRESHOLD_SET1] >= 20 && holdingRegs[THRESHOLD_SET1] <= 80)
+  if (holdingRegs[THRESHOLD_SET1] != thre1 && holdingRegs[THRESHOLD_SET1] >= 2000 && holdingRegs[THRESHOLD_SET1] <= 8000)
   {
-    thre1 = holdingRegs[THRESHOLD_SET1];
+    thre1 = holdingRegs[THRESHOLD_SET1] / 100;
     eeprom_writeInt(EE_ADDR_threshold_set1, thre1);
   }
 
@@ -1050,14 +1054,14 @@ void checkModbus()
   {
     switch (holdingRegs[GAIN_SET2])
     {
-    case 1:
-    case 2:
-    case 4:
-    case 8:
-    case 16:
-    case 32:
-    case 64:
-      pga2 = holdingRegs[GAIN_SET2];
+    case 100:
+    case 200:
+    case 400:
+    case 800:
+    case 1600:
+    case 3200:
+    case 6400:
+      pga2 = holdingRegs[GAIN_SET2] / 100;
       eeprom_writeInt(EE_ADDR_gain_set2, pga2);
       break;
     default:
@@ -1065,34 +1069,44 @@ void checkModbus()
     }
   }
 
-  if (holdingRegs[THRESHOLD_SET2] != thre2 && holdingRegs[THRESHOLD_SET2] >= 20 && holdingRegs[THRESHOLD_SET2] <= 80)
+  if (holdingRegs[THRESHOLD_SET2] != thre2 && holdingRegs[THRESHOLD_SET2] >= 2000 && holdingRegs[THRESHOLD_SET2] <= 8000)
   {
-    thre2 = holdingRegs[THRESHOLD_SET2];
+    thre2 = holdingRegs[THRESHOLD_SET2] / 100;
     eeprom_writeInt(EE_ADDR_threshold_set2, thre2);
   }
 
-  if (holdingRegs[WINDOW_BEGIN] != windowBegin && holdingRegs[WINDOW_BEGIN] >= 5 && holdingRegs[WINDOW_BEGIN] <= 45)
+  if (holdingRegs[WINDOW_BEGIN] != (windowBegin * 100) && holdingRegs[WINDOW_BEGIN] >= 500 && holdingRegs[WINDOW_BEGIN] <= 4500)
   {
-    windowBegin = holdingRegs[WINDOW_BEGIN];
+    windowBegin = holdingRegs[WINDOW_BEGIN] / 100;
     eeprom_writeInt(EE_ADDR_window_begin, windowBegin);
   }
 
-  if (holdingRegs[WINDOW_END] != windowEnd && holdingRegs[WINDOW_END] >= 55 && holdingRegs[WINDOW_END] <= 95)
+  if (holdingRegs[WINDOW_END] != (windowEnd * 100) && holdingRegs[WINDOW_END] >= 5500 && holdingRegs[WINDOW_END] <= 9500)
   {
-    windowEnd = holdingRegs[WINDOW_END];
+    windowEnd = holdingRegs[WINDOW_END] / 100;
     eeprom_writeInt(EE_ADDR_window_end, windowEnd);
   }
 
-  if (holdingRegs[POSITION_MODE] != positionMode && holdingRegs[POSITION_MODE] < 4)
+  if (holdingRegs[POSITION_MODE] != positionMode && holdingRegs[POSITION_MODE] < 5)
   {
     positionMode = holdingRegs[POSITION_MODE];
     eeprom_writeInt(EE_ADDR_position_mode, positionMode);
   }
 
-  if (holdingRegs[ANALOG_OUT_MODE] != analogOutMode && holdingRegs[ANALOG_OUT_MODE] < 4)
+  if (holdingRegs[ANALOG_OUT_MODE] != analogOutMode) 
   {
-    analogOutMode = holdingRegs[ANALOG_OUT_MODE];
-    eeprom_writeInt(EE_ADDR_analog_out_mode, analogOutMode);
+    switch (holdingRegs[ANALOG_OUT_MODE]) // save if valid mode an1/an2: "1Int 2Pos" = 0x0501, "1Pos 2Int" = 0x0105, "1Int 2Int" = 0x0505, "1Pos 2Pos" = 0x0101
+    {
+    case 0x0501:
+    case 0x0105:
+    case 0x0505:
+    case 0x0101:
+      analogOutMode = holdingRegs[ANALOG_OUT_MODE];
+      eeprom_writeInt(EE_ADDR_analog_out_mode, analogOutMode);
+      break;
+    default:
+      break;
+    }
   }
 
   if (holdingRegs[POSITION_OFFSET] != positionOffset && holdingRegs[POSITION_OFFSET] >= 0 && holdingRegs[POSITION_OFFSET] <= 2000)
@@ -1126,7 +1140,7 @@ void checkModbus()
   if (holdingRegs[IO_STATE] != io_state)
   {
     if (holdingRegs[IO_STATE] & (1 << IO_LASER))
-    { // check if IO_LASER bit is set
+    { // check if IO_LASER bit is 00set
       laserTimeout = TIMEOUT_LASER;
       digitalWrite(LASER, HIGH);
     }

@@ -5,13 +5,13 @@
 //defaults EEPROM
 #define MODEL_TYPE 50
 #define MODEL_SERIAL_NUMBER 22001
-#define FW_VERSION 503
+#define FW_VERSION 505
 
 #define DEFAULT_MODBUS_ID MODEL_SERIAL_NUMBER % 1000 % 247 // MODBUS ID slave (range 1..247)
 #define DEFAULT_MODBUS_SPEED 19200
 #define DEFAULT_MODBUS_FORMAT SERIAL_8N1
 
-#define DEFAULT_SET 0             // RELAY = 0 (REL1 || REL2), MAN1 = 1, MAN2 = 2
+#define DEFAULT_SET 3             // RELAY = 3 (REL1 || REL2), MAN1 = 1, MAN2 = 2
 #define DEFAULT_GAIN_SET1 16      // valid values 1,2,4,8,16,32,64
 #define DEFAULT_THRESHOLD_SET1 50 // min 20, max 80
 #define DEFAULT_GAIN_SET2 32
@@ -28,8 +28,8 @@
 #define DEFAULT_WINDOW_END 80   // min 55 max 95
 #endif
 
-#define DEFAULT_POSITION_MODE 0     // hmd = 0, rising = 1, falling = 2, peak = 3
-#define DEFAULT_ANALOG_OUT_MODE 0   // an1/an2: "1Int2Pos" = 0, "1Pos2Int2" = 1, "1Int2Int" = 2, "1Pos2Pos" = 3
+#define DEFAULT_POSITION_MODE 4     // rising = 1, falling = 2, peak = 3, hmd = 4
+#define DEFAULT_ANALOG_OUT_MODE 0x0501   // an1/an2: "1Int 2Pos" = 0x0501, "1Pos 2Int" = 0x0105, "1Int 2Int" = 0x0505, "1Pos 2Pos" = 0x0101
 #define DEFAULT_POSITION_OFFSET 250 // min 5, max 95 to avoid coincidence with pulse interrupts
 
 #define DEFAULT_FILTER_POSITION 6 // range 0 - 9999 ms (or nr of mirrors) for moving average
@@ -56,8 +56,8 @@
 
 #define EE_ADDR_window_begin 0x22    // WORD
 #define EE_ADDR_window_end 0x24      // WORD
-#define EE_ADDR_position_mode 0x26   // WORD  // positionMode: HMD = 0, RISE = 1, FALL = 2, PEAK = 3
-#define EE_ADDR_analog_out_mode 0x28 // WORD  // an1/an2: "1Int2Pos" = 0, "1Pos2Int" = 1, "1Int2Int" = 2, "1Pos2Pos" = 3
+#define EE_ADDR_position_mode 0x26   // WORD  // positionMode: RISE = 1, FALL = 2, PEAK = 3, HMD = 4
+#define EE_ADDR_analog_out_mode 0x28 // WORD  // an1/an2: "1Int 2Pos" = 0x0501, "1Pos 2Int" = 0x0105, "1Int 2Int" = 0x0505, "1Pos 2Pos" = 0x0101
 #define EE_ADDR_position_offset 0x30 // WORD  // offset for position
 
 #define EE_ADDR_filter_position 0x32 // WORD  // range 0 - 9999 ms
