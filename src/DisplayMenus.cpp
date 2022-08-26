@@ -1298,15 +1298,15 @@ void showAnalogMenu(void)
     menuTimeout = TIMEOUT_MENU;
 
   if (currentMenuOption == 0)
-    displayPrint("wBeg%3d%%", windowBegin);
+    displayPrint("AnO1 %s", menu_analogOutModeDisp[analogOutMode >> 10]);
   if (currentMenuOption == 1)
-    displayPrint("wEnd%3d%%", windowEnd);
+    displayPrint("AnO2 %s", menu_analogOutModeDisp[(analogOutMode & 0xFF) >> 2]);
   if (currentMenuOption == 2)
     displayPrint("mPos%s", menu_positionModeDisp[positionMode-1]);
   if (currentMenuOption == 3)
-    displayPrint("AnO1 %s", menu_analogOutModeDisp[analogOutMode >> 10]);
+    displayPrint("wBeg%3d%%", windowBegin);
   if (currentMenuOption == 4)
-    displayPrint("AnO2 %s", menu_analogOutModeDisp[(analogOutMode & 0xFF) >> 2]);
+    displayPrint("wEnd%3d%%", windowEnd);
   if (currentMenuOption == 5)
     displayPrint("Offs%4d", positionOffset);
 
@@ -1336,15 +1336,15 @@ void showAnalogMenu(void)
   {
     if (currentMenuOption == 0)
     {
-      currentMenu = MENU_WINDOW_BEGIN;
+      currentMenu = MENU_ANALOG_OUT1_MODE;
       currentMenuOption = 0;
-      menu_windowBegin = windowBegin;
+      menu_analogOutMode = analogOutMode >> 10;
     }
     if (currentMenuOption == 1)
     {
-      currentMenu = MENU_WINDOW_END;
+      currentMenu = MENU_ANALOG_OUT2_MODE;
       currentMenuOption = 0;
-      menu_windowEnd = windowEnd;
+      menu_analogOutMode = (analogOutMode & 0xFF) >> 2;
     }
     if (currentMenuOption == 2)
     {
@@ -1354,15 +1354,15 @@ void showAnalogMenu(void)
     }
     if (currentMenuOption == 3)
     {
-      currentMenu = MENU_ANALOG_OUT1_MODE;
+      currentMenu = MENU_WINDOW_BEGIN;
       currentMenuOption = 0;
-      menu_analogOutMode = analogOutMode >> 10;
+      menu_windowBegin = windowBegin;
     }
     if (currentMenuOption == 4)
     {
-      currentMenu = MENU_ANALOG_OUT2_MODE;
+      currentMenu = MENU_WINDOW_END;
       currentMenuOption = 0;
-      menu_analogOutMode = (analogOutMode & 0xFF) >> 2;
+      menu_windowEnd = windowEnd;
     }
     if (currentMenuOption == 5)
     {
@@ -1373,30 +1373,33 @@ void showAnalogMenu(void)
   }
 }
 
-void setWindowBegin(void)
+
+void setAnalogOut1Mode(void)
 {
   if (!menuTimeout)
     menuTimeout = TIMEOUT_MENU;
 
+  
   if (blinkMenu)
-    displayPrint("wBeg%3d%%", menu_windowBegin);
+    displayPrint("AnO1 %s", menu_analogOutModeDisp[menu_analogOutMode]);
   else
-    displayPrint("    %3d%%", menu_windowBegin);
+    displayPrint("     %s", menu_analogOutModeDisp[menu_analogOutMode]);
 
   if (lastKey == BTN_B || lastKey == BTN_BH)
-  { // decrement
-    menu_windowBegin = menu_windowBegin - 5;
-  }
-  if (lastKey == BTN_C || lastKey == BTN_CH)
-  { // increment
-    menu_windowBegin = menu_windowBegin + 5;
+  {
+    if (menu_analogOutMode > 0)
+      menu_analogOutMode--;
+    else
+      menu_analogOutMode = 1; // INT 5Hi
   }
 
-  //check range, min 5, max 45
-  if (menu_windowBegin < 5)
-    menu_windowBegin = 45;
-  if (menu_windowBegin > 45)
-    menu_windowBegin = 5;
+  if (lastKey == BTN_C || lastKey == BTN_CH)
+  { // increment by 1
+    if (menu_analogOutMode < 1)
+      menu_analogOutMode++;
+    else
+      menu_analogOutMode = 0; // POS 1Hi
+  }
 
   if (lastKey == BTN_A || lastKey == BTN_AH)
   {
@@ -1406,8 +1409,8 @@ void setWindowBegin(void)
 
   if (lastKey == BTN_D || lastKey == BTN_DH)
   { // SAVE
-    windowBegin = menu_windowBegin;
-    eeprom_writeInt(EE_ADDR_window_begin, windowBegin); //save to EEPROM
+    if (menu_analogOutMode) {analogOutMode |= (1 << 10);} else {analogOutMode &= ~(1 << 10);}  // set vs clear bit: 0x05XX vs 0x01XX
+    eeprom_writeInt(EE_ADDR_analog_out_mode, analogOutMode); //save to EEPROM
     displayPrint("SAVED!!!");
     delay(500);
     currentMenu = MENU_ANALOG;
@@ -1415,30 +1418,32 @@ void setWindowBegin(void)
   }
 }
 
-void setWindowEnd(void)
+void setAnalogOut2Mode(void)
 {
   if (!menuTimeout)
     menuTimeout = TIMEOUT_MENU;
 
+  
   if (blinkMenu)
-    displayPrint("wEnd%3d%%", menu_windowEnd);
+    displayPrint("AnO2 %s", menu_analogOutModeDisp[menu_analogOutMode]);
   else
-    displayPrint("    %3d%%", menu_windowEnd);
+    displayPrint("     %s", menu_analogOutModeDisp[menu_analogOutMode]);
 
   if (lastKey == BTN_B || lastKey == BTN_BH)
-  { // decrement
-    menu_windowEnd = menu_windowEnd - 5;
-  }
-  if (lastKey == BTN_C || lastKey == BTN_CH)
-  { // increment
-    menu_windowEnd = menu_windowEnd + 5;
+  {
+    if (menu_analogOutMode > 0)
+      menu_analogOutMode--;
+    else
+      menu_analogOutMode = 1; // INT 5Lo
   }
 
-  //check range, min 55, max 95
-  if (menu_windowEnd < 55)
-    menu_windowEnd = 95;
-  if (menu_windowEnd > 95)
-    menu_windowEnd = 55;
+  if (lastKey == BTN_C || lastKey == BTN_CH)
+  { // increment by 1
+    if (menu_analogOutMode < 1)
+      menu_analogOutMode++;
+    else
+      menu_analogOutMode = 0; // POS 1Lo
+  }
 
   if (lastKey == BTN_A || lastKey == BTN_AH)
   {
@@ -1448,8 +1453,8 @@ void setWindowEnd(void)
 
   if (lastKey == BTN_D || lastKey == BTN_DH)
   { // SAVE
-    windowEnd = menu_windowEnd;
-    eeprom_writeInt(EE_ADDR_window_end, windowEnd); //save to EEPROM
+    if (menu_analogOutMode) {analogOutMode |= (1 << 2);} else {analogOutMode &= ~(1 << 2);}  // set vs clear bit: 0xXX05 vs 0xXX01
+    eeprom_writeInt(EE_ADDR_analog_out_mode, analogOutMode); //save to EEPROM
     displayPrint("SAVED!!!");
     delay(500);
     currentMenu = MENU_ANALOG;
@@ -1501,32 +1506,30 @@ void setPositionMode(void)
   }
 }
 
-void setAnalogOut1Mode(void)
+void setWindowBegin(void)
 {
   if (!menuTimeout)
     menuTimeout = TIMEOUT_MENU;
 
-  
   if (blinkMenu)
-    displayPrint("AnO1 %s", menu_analogOutModeDisp[menu_analogOutMode]);
+    displayPrint("wBeg%3d%%", menu_windowBegin);
   else
-    displayPrint("     %s", menu_analogOutModeDisp[menu_analogOutMode]);
+    displayPrint("    %3d%%", menu_windowBegin);
 
   if (lastKey == BTN_B || lastKey == BTN_BH)
-  {
-    if (menu_analogOutMode > 0)
-      menu_analogOutMode--;
-    else
-      menu_analogOutMode = 1; // INT 5Hi
+  { // decrement
+    menu_windowBegin = menu_windowBegin - 5;
+  }
+  if (lastKey == BTN_C || lastKey == BTN_CH)
+  { // increment
+    menu_windowBegin = menu_windowBegin + 5;
   }
 
-  if (lastKey == BTN_C || lastKey == BTN_CH)
-  { // increment by 1
-    if (menu_analogOutMode < 1)
-      menu_analogOutMode++;
-    else
-      menu_analogOutMode = 0; // POS 1Hi
-  }
+  //check range, min 5, max 45
+  if (menu_windowBegin < 5)
+    menu_windowBegin = 45;
+  if (menu_windowBegin > 45)
+    menu_windowBegin = 5;
 
   if (lastKey == BTN_A || lastKey == BTN_AH)
   {
@@ -1536,8 +1539,8 @@ void setAnalogOut1Mode(void)
 
   if (lastKey == BTN_D || lastKey == BTN_DH)
   { // SAVE
-    if (menu_analogOutMode) {analogOutMode |= (1 << 10);} else {analogOutMode &= ~(1 << 10);}  // set vs clear bit: 0x05XX vs 0x01XX
-    eeprom_writeInt(EE_ADDR_analog_out_mode, analogOutMode); //save to EEPROM
+    windowBegin = menu_windowBegin;
+    eeprom_writeInt(EE_ADDR_window_begin, windowBegin); //save to EEPROM
     displayPrint("SAVED!!!");
     delay(500);
     currentMenu = MENU_ANALOG;
@@ -1545,32 +1548,30 @@ void setAnalogOut1Mode(void)
   }
 }
 
-void setAnalogOut2Mode(void)
+void setWindowEnd(void)
 {
   if (!menuTimeout)
     menuTimeout = TIMEOUT_MENU;
 
-  
   if (blinkMenu)
-    displayPrint("AnO2 %s", menu_analogOutModeDisp[menu_analogOutMode]);
+    displayPrint("wEnd%3d%%", menu_windowEnd);
   else
-    displayPrint("     %s", menu_analogOutModeDisp[menu_analogOutMode]);
+    displayPrint("    %3d%%", menu_windowEnd);
 
   if (lastKey == BTN_B || lastKey == BTN_BH)
-  {
-    if (menu_analogOutMode > 0)
-      menu_analogOutMode--;
-    else
-      menu_analogOutMode = 1; // INT 5Lo
+  { // decrement
+    menu_windowEnd = menu_windowEnd - 5;
+  }
+  if (lastKey == BTN_C || lastKey == BTN_CH)
+  { // increment
+    menu_windowEnd = menu_windowEnd + 5;
   }
 
-  if (lastKey == BTN_C || lastKey == BTN_CH)
-  { // increment by 1
-    if (menu_analogOutMode < 1)
-      menu_analogOutMode++;
-    else
-      menu_analogOutMode = 0; // POS 1Lo
-  }
+  //check range, min 55, max 95
+  if (menu_windowEnd < 55)
+    menu_windowEnd = 95;
+  if (menu_windowEnd > 95)
+    menu_windowEnd = 55;
 
   if (lastKey == BTN_A || lastKey == BTN_AH)
   {
@@ -1580,8 +1581,8 @@ void setAnalogOut2Mode(void)
 
   if (lastKey == BTN_D || lastKey == BTN_DH)
   { // SAVE
-    if (menu_analogOutMode) {analogOutMode |= (1 << 2);} else {analogOutMode &= ~(1 << 2);}  // set vs clear bit: 0xXX05 vs 0xXX01
-    eeprom_writeInt(EE_ADDR_analog_out_mode, analogOutMode); //save to EEPROM
+    windowEnd = menu_windowEnd;
+    eeprom_writeInt(EE_ADDR_window_end, windowEnd); //save to EEPROM
     displayPrint("SAVED!!!");
     delay(500);
     currentMenu = MENU_ANALOG;
