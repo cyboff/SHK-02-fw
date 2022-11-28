@@ -72,6 +72,8 @@ volatile int motorPulseIndex = 0;
 volatile long motorTimeOld = 0;
 volatile long motorTimeNow = 0;
 volatile int motorTimeDiff = 0;
+volatile int peakValue = 0;
+volatile int positionValue = 0;
 
 // Buttons
 volatile int BtnPressedATimeout = 0;
@@ -189,8 +191,8 @@ void setup()
 
   // Serial.begin(modbusSpeed);
 
-  //modbus_configure(modbusSpeed, modbusFormat, modbusID, TXEN, TOTAL_REGS_SIZE, 0);
-  modbus_configure(modbusSpeed, modbusFormat, modbusID, TXEN, 1100, 0);  // for compatibility with old SDIS 
+  // modbus_configure(modbusSpeed, modbusFormat, modbusID, TXEN, TOTAL_REGS_SIZE, 0);
+  modbus_configure(modbusSpeed, modbusFormat, modbusID, TXEN, 1100, 0); // for compatibility with old SDIS
 
   // initialize ADC
 
@@ -290,7 +292,7 @@ void loop()
 // check SET and load proper settings
 void checkSET()
 {
-  switch (set)  // RELAY = 3 (REL1 || REL2), MAN1 = 1, MAN2 = 2
+  switch (set) // RELAY = 3 (REL1 || REL2), MAN1 = 1, MAN2 = 2
   {
   case 1:
     pga = pga1;
@@ -302,7 +304,7 @@ void checkSET()
     thre = thre2;
     setDispIndex = 1; // MAN2
     break;
-  case 3:             // REL
+  case 3: // REL
     if (digitalRead(SET_IN))
     {
       pga = pga1;
@@ -359,7 +361,7 @@ void checkALARM()
     hourTimeout = 3600000;
     total_runtime++;
     if ((total_runtime % 4) == 1)
-    { // every 4 hours
+    {                                         // every 4 hours
       total_runtime = total_runtime & 0xFFFF; // prevent overload
       eeprom_writeInt(EE_ADDR_total_runtime, total_runtime);
     }
@@ -636,6 +638,29 @@ void callback_delay()
 {
   if (!adc0_busy) // previous ADC conversion ended
   {
+
+    // warning! SPI makes noise, do not send data through SPI when ADC is running
+    // updating SPI values from previous ADC sequence now, before new ADC sequence starts
+
+    switch (analogOutMode)
+    { // an1/an2: "1Int 2Pos" = 0x0501, "1Pos 2Int" = 0x0105, "1Int 2Int" = 0x0505, "1Pos 2Pos" = 0x0101
+    case 0x0501:
+      updateSPI(peakValue, positionValue); // range is 2x 16bit
+      break;
+    case 0x0105:
+      updateSPI(positionValue, peakValue);
+      break;
+    case 0x0505:
+      updateSPI(peakValue, peakValue);
+      break;
+    case 0x0101:
+      updateSPI(positionValue, positionValue);
+      break;
+    default:
+      updateSPI(peakValue, positionValue); // range is 2x 16bit
+      break;
+    }
+
     exectime = micros();
     memset((void *)adc0_buf, 0, sizeof(adc0_buf)); // clear DMA buffer
 
@@ -694,13 +719,16 @@ void updateResults()
   int hmdThreshold = 0;
   int winBegin = 0;
   int winEnd = 0;
-  int peakValue = 0;
+  // int peakValue = 0;
   int peak[ANALOG_BUFFER_SIZE] = {};
   long risingEdgeTime = 0;
   long fallingEdgeTime = 0;
   long peakValueTime = 0;
-  int positionValue = 0;
+  // int peakValue = 0;
   int positionValueAvg = 0;
+
+  peakValue = 0;
+  positionValue = 0;
 
   for (int i = 0; i < ANALOG_BUFFER_SIZE; i++)
   {
@@ -815,7 +843,8 @@ void updateResults()
     case 4:
       positionValueDisp = peakValueTime;
       break;
-    default: break;
+    default:
+      break;
     }
   }
   else
@@ -843,24 +872,26 @@ void updateResults()
     peakValue = 0xBFFF;         // 16mA on intensity analog output
   }
 
-  switch (analogOutMode)
-  { // an1/an2: "1Int 2Pos" = 0x0501, "1Pos 2Int" = 0x0105, "1Int 2Int" = 0x0505, "1Pos 2Pos" = 0x0101
-  case 0x0501:
-    updateSPI(peakValue, positionValue); // range is 2x 16bit
-    break;
-  case 0x0105:
-    updateSPI(positionValue, peakValue);
-    break;
-  case 0x0505:
-    updateSPI(peakValue, peakValue);
-    break;
-  case 0x0101:
-    updateSPI(positionValue, positionValue);
-    break;
-  default:
-    updateSPI(peakValue, positionValue); // range is 2x 16bit
-    break;
-  }
+  // warning! SPI makes noise, do not send data through SPI when ADC is running
+
+  // switch (analogOutMode)
+  // { // an1/an2: "1Int 2Pos" = 0x0501, "1Pos 2Int" = 0x0105, "1Int 2Int" = 0x0505, "1Pos 2Pos" = 0x0101
+  // case 0x0501:
+  //   updateSPI(peakValue, positionValue); // range is 2x 16bit
+  //   break;
+  // case 0x0105:
+  //   updateSPI(positionValue, peakValue);
+  //   break;
+  // case 0x0505:
+  //   updateSPI(peakValue, peakValue);
+  //   break;
+  // case 0x0101:
+  //   updateSPI(positionValue, positionValue);
+  //   break;
+  // default:
+  //   updateSPI(peakValue, positionValue); // range is 2x 16bit
+  //   break;
+  // }
 
   // if (dataSent && motorPulseIndex == 0) // prepare data for visualization on PC, only first mirror
   if (dataSent && motorPulseIndex == (filterPosition % 6)) // possibility to view different mirrors by changing positionFilter
@@ -946,8 +977,8 @@ void checkModbus()
   holdingRegs[OFFSET_DELAY] = delayOffset;
 
   // updated in updateResults()
-  holdingRegs[PEAK_VALUE] = peakValueDisp * 100;         // 0-10000  0-100% * 100
-  holdingRegs[POSITION_VALUE] = positionValueDisp * 10;  // 0-10000
+  holdingRegs[PEAK_VALUE] = peakValueDisp * 100;               // 0-10000  0-100% * 100
+  holdingRegs[POSITION_VALUE] = positionValueDisp * 10;        // 0-10000
   holdingRegs[POSITION_VALUE_AVG] = positionValueAvgDisp * 10; // 0-10000
 
   if (!dataSent)
@@ -1015,7 +1046,7 @@ void checkModbus()
     // restart communication
     Serial1.flush();
     Serial1.end();
-    //modbus_configure(modbusSpeed, modbusFormat, modbusID, TXEN, TOTAL_REGS_SIZE, 0);
+    // modbus_configure(modbusSpeed, modbusFormat, modbusID, TXEN, TOTAL_REGS_SIZE, 0);
     modbus_configure(modbusSpeed, modbusFormat, modbusID, TXEN, 1100, 0); // for compatibility with old SDIS
   }
 
@@ -1093,7 +1124,7 @@ void checkModbus()
     eeprom_writeInt(EE_ADDR_position_mode, positionMode);
   }
 
-  if (holdingRegs[ANALOG_OUT_MODE] != analogOutMode) 
+  if (holdingRegs[ANALOG_OUT_MODE] != analogOutMode)
   {
     switch (holdingRegs[ANALOG_OUT_MODE]) // save if valid mode an1/an2: "1Int 2Pos" = 0x0501, "1Pos 2Int" = 0x0105, "1Int 2Int" = 0x0505, "1Pos 2Pos" = 0x0101
     {

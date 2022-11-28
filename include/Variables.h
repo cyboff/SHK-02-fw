@@ -185,6 +185,8 @@ extern volatile long peakValueTimeDisp;
 extern volatile int peakValueDisp;
 extern volatile int positionValueDisp;
 extern volatile int positionValueAvgDisp;
+extern volatile int peakValue;
+extern volatile int positionValue;
 
 extern void checkSET();
 
