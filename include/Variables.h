@@ -13,19 +13,19 @@
 
 // Define pins for the LED display.
 // You can change these, just re-wire your board:
-#define LED_DATA_PIN 7         // 7 connects to the display's data in
-#define LED_RS_PIN 6           // 6 the display's register select pin
+#define LED_DATA_PIN 3         // 3 connects to the display's data in
+#define LED_RS_PIN 4           // 4 the display's register select pin
 #define LED_CLK_PIN 5          // 5 the display's clock pin
-#define LED_EN_PIN  4          // 4 the display's chip enable pin
-#define LED_RST_PIN 3          // 3 the display's reset pin
+#define LED_EN_PIN  6          // 6 the display's chip enable pin
+#define LED_RST_PIN 7          // 7 the display's reset pin
 
 #define DISPLAY_LENGHT 8 // number of characters in the display
 
 // LEDs and I/O
 
-#define LED_POWER 19
+#define LED_POWER 17
 #define LED_SIGNAL 18 // now same as OUT_SIGNAL
-#define LED_ALARM 17
+#define LED_ALARM 19
 
 #define PIN_BTN_A 20 //(digital pin)
 #define PIN_BTN_B 21 //(digital pin)
