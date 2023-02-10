@@ -198,8 +198,8 @@ void setup()
 
   ///// ADC0 in differential mode with PGA for signal from photodiode ////
 
-  pinMode(A10, INPUT); // analog input P differential for PGA
-  pinMode(A11, INPUT); // analog input N differential for PGA
+  pinMode(A10, INPUT_DISABLE); // analog input P differential for PGA
+  pinMode(A11, INPUT_DISABLE); // analog input N differential for PGA
 
   adc->adc0->setAveraging(ADC0_AVERAGING); // set number of averages
   adc->adc0->setResolution(9);             // set bits of resolution - 9 bit for differential
@@ -638,6 +638,7 @@ void callback_delay()
 {
   if (!adc0_busy) // previous ADC conversion ended
   {
+    exectime = micros();
 
     // warning! SPI makes noise, do not send data through SPI when ADC is running
     // updating SPI values from previous ADC sequence now, before new ADC sequence starts
@@ -661,7 +662,6 @@ void callback_delay()
       break;
     }
 
-    exectime = micros();
     memset((void *)adc0_buf, 0, sizeof(adc0_buf)); // clear DMA buffer
 
     // adc0_busy = 1;
@@ -1144,6 +1144,9 @@ void checkModbus()
   {
     positionOffset = holdingRegs[POSITION_OFFSET];
     eeprom_writeInt(EE_ADDR_position_offset, positionOffset);
+
+    // SCB_AIRCR = 0x05FA0004;        // software reset
+
     if (positionOffset < 1000) // depends on motor HALL sensors & mirror position - choose the best to have no timing issues
       attachInterrupt(digitalPinToInterrupt(MOTOR_ALARM), motor_isr, FALLING);
     else
@@ -1191,6 +1194,11 @@ void checkModbus()
     {
       digitalWrite(IR_LED, LOW);
       intTest = false;
+    }
+
+    if (holdingRegs[IO_STATE] & (1 << IO_SW_RESET))
+    {
+      SCB_AIRCR = 0x05FA0004;        // software reset
     }
   }
 }

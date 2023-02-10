@@ -142,7 +142,8 @@ enum
   IO_BTN_A,
   IO_BTN_B,
   IO_BTN_C,
-  IO_BTN_D
+  IO_BTN_D,
+  IO_SW_RESET
 };
 
 // MODBUS
