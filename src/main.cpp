@@ -503,7 +503,8 @@ void checkButtonD()
 void timer500us_isr(void)
 { // every 500us
   // motor pulse
-  digitalWriteFast(MOTOR_CLK, !digitalReadFast(MOTOR_CLK));
+  digitalToggleFast(MOTOR_CLK);
+  //digitalWriteFast(MOTOR_CLK, !digitalReadFast(MOTOR_CLK));
 
   // update timeouts
 
@@ -518,7 +519,7 @@ void timer500us_isr(void)
   }
   else
   {
-    digitalWrite(LASER, LOW);
+    digitalWriteFast(LASER, LOW);
   }
 
   if (testTimeout)
