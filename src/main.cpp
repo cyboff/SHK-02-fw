@@ -1,4 +1,4 @@
-// firmware for SHK-02 board
+// firmware for SHK-03 board
 
 #include <Arduino.h>
 #include <stdio.h>
