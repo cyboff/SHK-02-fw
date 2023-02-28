@@ -16,8 +16,8 @@
 // for filters
 #include <Bounce2.h>
 
-// for offset delay
-#include <TeensyDelay.h>
+// // for offset delay
+// #include <TeensyDelay.h>
 
 // for ModBus
 #include "SimpleModbusSlave.h"
@@ -65,6 +65,7 @@ int hmdThresholdHyst = 13;
 
 // Timers
 IntervalTimer timer500us; // timer for motor speed and various timeouts
+IntervalTimer timer_delay; // timer for precise offset
 
 int startTimerValue0 = 0;
 
@@ -252,6 +253,7 @@ void setup()
 
   // motor slow start
   timer500us.priority(0);
+  timer_delay.priority(1);
 
   for (int speed = 20; speed <= 100; speed++)
   {
@@ -261,8 +263,8 @@ void setup()
     delay(100);
   }
 
-  TeensyDelay::begin();
-  TeensyDelay::addDelayChannel(callback_delay, 0); // setup channel 0
+  // TeensyDelay::begin();
+  // TeensyDelay::addDelayChannel(callback_delay, 0); // setup channel 0
 
   // clear data buffers
   memset((void *)adc0_buf, 0, sizeof(adc0_buf));
@@ -631,12 +633,14 @@ void motor_isr(void)
     if (delayOffset < 0)                                                           // rotate delayOffset between 0 - 1000
       delayOffset = 1000 + delayOffset;
 
-    TeensyDelay::trigger(delayOffset, 0);
+    // TeensyDelay::trigger(delayOffset, 0);
+    timer_delay.begin(callback_delay, delayOffset);
   }
 }
 
 void callback_delay()
 {
+  timer_delay.end();
   if (!adc0_busy) // previous ADC conversion ended
   {
     exectime = micros();
