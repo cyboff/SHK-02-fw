@@ -1,4 +1,4 @@
-// firmware for SHK-02 board
+// firmware for SHK-03 board
 
 #include <Arduino.h>
 #include <stdio.h>
@@ -15,9 +15,6 @@
 
 // for filters
 #include <Bounce2.h>
-
-// // for offset delay
-// #include <TeensyDelay.h>
 
 // for ModBus
 #include "SimpleModbusSlave.h"
@@ -65,9 +62,7 @@ int hmdThresholdHyst = 13;
 
 // Timers
 IntervalTimer timer500us; // timer for motor speed and various timeouts
-IntervalTimer timer_delay; // timer for precise offset
-
-int startTimerValue0 = 0;
+IntervalTimer timerDelay; // timer for precise offset
 
 volatile int motorPulseIndex = 0;
 volatile long motorTimeOld = 0;
@@ -110,7 +105,7 @@ void timer500us_isr(void);
 // motor (from HALL sensor) interrupt
 void motor_isr(void);
 
-void callback_delay();
+void callback_delay_isr();
 void adc0_dma_isr(void);
 void updateResults();
 
@@ -253,18 +248,15 @@ void setup()
 
   // motor slow start
   timer500us.priority(0);
-  timer_delay.priority(1);
+  timerDelay.priority(1);
 
   for (int speed = 20; speed <= 100; speed++)
   {
     timer500us.end();
-    startTimerValue0 = timer500us.begin(timer500us_isr, 50000 / speed); // motor output pulses slowly going to 500us
+    timer500us.begin(timer500us_isr, 50000 / speed); // motor output pulses slowly going to 500us
     displayPrint("Mot=%3d%%", speed);
     delay(100);
   }
-
-  // TeensyDelay::begin();
-  // TeensyDelay::addDelayChannel(callback_delay, 0); // setup channel 0
 
   // clear data buffers
   memset((void *)adc0_buf, 0, sizeof(adc0_buf));
@@ -633,14 +625,13 @@ void motor_isr(void)
     if (delayOffset < 0)                                                           // rotate delayOffset between 0 - 1000
       delayOffset = 1000 + delayOffset;
 
-    // TeensyDelay::trigger(delayOffset, 0);
-    timer_delay.begin(callback_delay, delayOffset);
+    timerDelay.begin(callback_delay_isr, delayOffset);
   }
 }
 
-void callback_delay()
+void callback_delay_isr()
 {
-  timer_delay.end();
+  timerDelay.end();
   if (!adc0_busy) // previous ADC conversion ended
   {
     exectime = micros();
