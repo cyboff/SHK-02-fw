@@ -1056,7 +1056,7 @@ void checkModbus()
     eeprom_writeInt(EE_ADDR_set, set);
   }
 
-  if (holdingRegs[GAIN_SET1] != pga1 * 100)
+  if (holdingRegs[GAIN_SET1] != (pga1 * 100))
   {
     switch (holdingRegs[GAIN_SET1])
     { // check for valid values
@@ -1075,13 +1075,13 @@ void checkModbus()
     }
   }
 
-  if (holdingRegs[THRESHOLD_SET1] != thre1 && holdingRegs[THRESHOLD_SET1] >= 2000 && holdingRegs[THRESHOLD_SET1] <= 8000)
+  if ((holdingRegs[THRESHOLD_SET1] != (thre1 * 100)) && (holdingRegs[THRESHOLD_SET1] >= 2000) && (holdingRegs[THRESHOLD_SET1] <= 8000))
   {
     thre1 = holdingRegs[THRESHOLD_SET1] / 100;
     eeprom_writeInt(EE_ADDR_threshold_set1, thre1);
   }
 
-  if (holdingRegs[GAIN_SET2] != pga2)
+  if (holdingRegs[GAIN_SET2] != (pga2 * 100))
   {
     switch (holdingRegs[GAIN_SET2])
     {
@@ -1100,7 +1100,7 @@ void checkModbus()
     }
   }
 
-  if (holdingRegs[THRESHOLD_SET2] != thre2 && holdingRegs[THRESHOLD_SET2] >= 2000 && holdingRegs[THRESHOLD_SET2] <= 8000)
+  if ((holdingRegs[THRESHOLD_SET2] != (thre2 * 100)) && (holdingRegs[THRESHOLD_SET2] >= 2000) && (holdingRegs[THRESHOLD_SET2] <= 8000))
   {
     thre2 = holdingRegs[THRESHOLD_SET2] / 100;
     eeprom_writeInt(EE_ADDR_threshold_set2, thre2);
